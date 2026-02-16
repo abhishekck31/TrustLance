@@ -30,6 +30,11 @@ contract Escrow {
         uint256 amountReleased
     );
 
+    event DisputeRaised(
+        uint256 indexed jobId,
+        address indexed raisedBy
+    );
+
     // ================= ENUMS =================
 
     enum JobStatus {
@@ -187,6 +192,7 @@ contract Escrow {
 
         require(job.client != address(0), "Job does not exist");
         require(msg.sender == job.client, "Only client can approve");
+        require(job.status != JobStatus.Disputed, "Job under dispute");
         require(job.status == JobStatus.InProgress, "Job not active");
         require(_milestoneIndex < job.milestones.length, "Invalid milestone index");
 
@@ -218,6 +224,23 @@ contract Escrow {
         if (allApproved) {
             job.status = JobStatus.Completed;
         }
+    }
+
+    function raiseDispute(uint256 _jobId) external {
+        Job storage job = jobs[_jobId];
+
+        require(job.client != address(0), "Job does not exist");
+        require(
+            msg.sender == job.client || msg.sender == job.freelancer,
+            "Not authorized"
+        );
+        require(job.status != JobStatus.Completed, "Job already completed");
+        require(job.status != JobStatus.Disputed, "Already disputed");
+
+        job.status = JobStatus.Disputed;
+        job.disputeStatus = DisputeStatus.Raised;
+
+        emit DisputeRaised(_jobId, msg.sender);
     }
 
     // ================= VIEW HELPERS =================

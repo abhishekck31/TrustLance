@@ -81,4 +81,29 @@ describe("Escrow", function () {
                 .to.be.revertedWith("Only client can approve");
         });
     });
+
+    describe("Dispute Handling", function () {
+        it("Should allow client/freelancer to raise a dispute and freeze approvals", async function () {
+            const { escrow, client, freelancer } = await loadFixture(deployEscrowFixture);
+
+            const milestones = [ethers.parseEther("1.0")];
+            const totalAmount = ethers.parseEther("1.0");
+
+            await escrow.connect(client).createJob(freelancer.address, "metaHash", milestones);
+            await escrow.connect(client).fundEscrow(0, { value: totalAmount });
+            await escrow.connect(freelancer).submitMilestone(0, 0, "submissionHash");
+
+            // Client raises dispute
+            await expect(escrow.connect(client).raiseDispute(0))
+                .to.emit(escrow, "DisputeRaised")
+                .withArgs(0, client.address);
+
+            const job = await escrow.jobs(0);
+            expect(job.status).to.equal(4); // JobStatus.Disputed = 4
+
+            // Attempt to approve milestone should fail
+            await expect(escrow.connect(client).approveMilestone(0, 0))
+                .to.be.revertedWith("Job under dispute");
+        });
+    });
 });
