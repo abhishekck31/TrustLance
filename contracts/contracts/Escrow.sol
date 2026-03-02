@@ -35,6 +35,11 @@ contract Escrow {
         address indexed raisedBy
     );
 
+    event DisputeResolved(
+        uint256 indexed jobId,
+        bool freelancerWon
+    );
+
     // ================= ENUMS =================
 
     enum JobStatus {
@@ -84,8 +89,13 @@ contract Escrow {
 
     mapping(uint256 => Job) public jobs;
     uint256 public jobCounter;
+    address public resolver;
 
     // ================= FUNCTIONS =================
+
+    constructor() {
+        resolver = msg.sender;
+    }
 
     function createJob(
         address _freelancer,
@@ -241,6 +251,34 @@ contract Escrow {
         job.disputeStatus = DisputeStatus.Raised;
 
         emit DisputeRaised(_jobId, msg.sender);
+    }
+
+    function resolveDispute(
+        uint256 _jobId,
+        bool _freelancerWon
+    ) external {
+
+        require(msg.sender == resolver, "Only resolver allowed");
+
+        Job storage job = jobs[_jobId];
+
+        require(job.status == JobStatus.Disputed, "Job not disputed");
+        require(job.disputeStatus == DisputeStatus.Raised, "Already resolved");
+
+        job.disputeStatus = DisputeStatus.Resolved;
+        job.status = JobStatus.Resolved;
+
+        uint256 remaining = job.totalAmount - job.releasedAmount;
+
+        if (remaining > 0) {
+            if (_freelancerWon) {
+                payable(job.freelancer).transfer(remaining);
+            } else {
+                payable(job.client).transfer(remaining);
+            }
+        }
+
+        emit DisputeResolved(_jobId, _freelancerWon);
     }
 
     // ================= VIEW HELPERS =================
