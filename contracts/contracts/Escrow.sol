@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract Escrow {
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+
+contract Escrow is ReentrancyGuard, Pausable {
 
     // ================= EVENTS =================
 
@@ -90,11 +93,28 @@ contract Escrow {
     mapping(uint256 => Job) public jobs;
     uint256 public jobCounter;
     address public resolver;
+    address public owner;
+
+    // ================= MODIFIERS =================
+    
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not owner");
+        _;
+    }
 
     // ================= FUNCTIONS =================
 
     constructor() {
+        owner = msg.sender;
         resolver = msg.sender;
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     function createJob(
@@ -141,7 +161,7 @@ contract Escrow {
         emit JobCreated(jobId, msg.sender, _freelancer, total);
     }
 
-    function fundEscrow(uint256 _jobId) external payable {
+    function fundEscrow(uint256 _jobId) external payable nonReentrant whenNotPaused {
 
         Job storage job = jobs[_jobId];
 
@@ -197,7 +217,7 @@ contract Escrow {
     function approveMilestone(
         uint256 _jobId,
         uint256 _milestoneIndex
-    ) external {
+    ) external nonReentrant whenNotPaused {
         Job storage job = jobs[_jobId];
 
         require(job.client != address(0), "Job does not exist");
@@ -218,7 +238,8 @@ contract Escrow {
 
         job.releasedAmount += amount;
 
-        payable(job.freelancer).transfer(amount);
+        (bool success, ) = payable(job.freelancer).call{value: amount}("");
+        require(success, "Transfer failed");
 
         emit MilestoneApproved(_jobId, _milestoneIndex, amount);
 
@@ -256,7 +277,7 @@ contract Escrow {
     function resolveDispute(
         uint256 _jobId,
         bool _freelancerWon
-    ) external {
+    ) external nonReentrant whenNotPaused {
 
         require(msg.sender == resolver, "Only resolver allowed");
 
@@ -272,9 +293,11 @@ contract Escrow {
 
         if (remaining > 0) {
             if (_freelancerWon) {
-                payable(job.freelancer).transfer(remaining);
+                (bool success, ) = payable(job.freelancer).call{value: remaining}("");
+                require(success, "Transfer failed");
             } else {
-                payable(job.client).transfer(remaining);
+                (bool success, ) = payable(job.client).call{value: remaining}("");
+                require(success, "Transfer failed");
             }
         }
 
