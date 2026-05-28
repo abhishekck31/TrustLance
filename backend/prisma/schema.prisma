@@ -1,0 +1,35 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  jobId       Int      @unique
+  client      String
+  freelancer  String
+  totalAmount String
+  status      String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  milestones  Milestone[]
+}
+
+model Milestone {
+  id             String   @id @default(uuid())
+  jobId          String
+  milestoneIndex Int
+  amount         String
+  status         String
+  submissionHash String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  job            Job      @relation(fields: [jobId], references: [id])
+}
