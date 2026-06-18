@@ -7,74 +7,27 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum JobStatus {
-  OPEN
-  IN_PROGRESS
-  PAUSED
-  COMPLETED
-  FAILED
-}
-
-enum MilestoneStatus {
-  PENDING
-  APPROVED
-  COMPLETED
-  FAILED
-}
-
-enum EscrowStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
 model User {
-  id            Int      @id @default(autoincrement())
-  walletAddress String   @unique // The Web3 address identifier
-  name          String?
-  email         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  jobs          Job[]
+  id        Int      @id @default(autoincrement())
+  walletAddress String @unique
+  name      String?
+  email     String?
+  createdAt DateTime @default(now())
 }
 
 model Job {
-  id            Int       @id @default(autoincrement())
-  title         String
-  description   String?
-  status        JobStatus @default(OPEN)
-  ownerId       Int
-  owner         User      @relation(fields: [ownerId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  milestones    Milestone[]
-  escrowTxns     EscrowTransaction[]
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  status      String // e.g., PENDING, PROCESSING, COMPLETED
+  creatorId   Int
+  createdAt   DateTime  @default(now())
 }
 
-model Milestone {
-  id            Int         @id @default(autoincrement())
-  jobId         Int
-  description   String
-  status        MilestoneStatus @default(PENDING)
-  amountDue     Float       // Amount required for this milestone
-  milestoneDate DateTime?
-  job           Job         @relation(fields: [jobId], references: [id])
-
-  escrowTransactions EscrowTransaction[]
-}
-
-model EscrowTransaction {
-  id            Int          @id @default(autoincrement())
-  jobId         Int
-  milestoneId   Int?         // Nullable if it's a general deposit/withdrawal, but strongly linked to a milestone
-  transactionType String      // e.g., "DEPOSIT", "WITHDRAWAL"
-  amount        Float        // The amount transferred
-  status        EscrowStatus @default(PENDING)
-  transactionDate DateTime    @default(now())
-  relatedMilestone Milestone? @relation(fields: [milestoneId], references: [id])
-
-  job           Job?         @relation(fields: [jobId], references: [id])
+model TransactionHashLog {
+  id            Int      @id @default(autoincrement())
+  jobId         Int?
+  transactionHash String
+  walletAddress String
+  timestamp    DateTime @default(now())
 }

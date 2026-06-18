@@ -1,26 +1,19 @@
 {
   "name": "trustlance-backend",
   "version": "1.0.0",
-  "description": "TrustLance Escrow Backend",
+  "description": "Express API for TrustLance Web3 application",
   "main": "src/index.js",
   "scripts": {
+    "dev": "ts-node src/index.ts",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "db:push": "prisma db push",
-    "db:generate": "prisma generate"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "cors": "^2.8.5",
+    "@prisma/client": "^5.x",
     "dotenv": "^16.4.5",
-    "ethers": "^6.11.1",
     "express": "^4.19.2",
-    "helmet": "^7.1.0",
-    "morgan": "^1.10.0",
     "redis": "^4.6.13",
-    "@prisma/client": "^5.13.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0",
-    "prisma": "^5.13.0"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }
