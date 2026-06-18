@@ -1,118 +1,102 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract Escrow {
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-    enum EscrowState {
-        Created,
-        Locked,
-        Released,
-        Disputed
-    }
-
-    struct EscrowItem {
-        address payable receiver;
-        address payable escrowAgent;
+/**
+ * @title Escrow
+ * @notice A simple escrow contract managing funds and milestone releases.
+ */
+contract Escrow is Ownable {
+    struct EscrowAgreement {
+        address payable buyer;
+        address payable seller;
         uint256 amount;
-        EscrowState state;
+        uint256 releaseMilestone;
+        bool released;
     }
 
-    mapping(uint256, EscrowItem) public escrowItems;
-    uint256 public nextId = 1;
+    mapping(uint256, EscrowAgreement) public agreements;
+    uint256 public nextAgreementId = 1;
 
-    event EscrowCreated(uint256 indexed id, address indexed receiver, address indexed agent, uint256 amount);
-    event EscrowLocked(uint256 indexed id);
-    event EscrowReleased(uint256 indexed id);
-    event EscrowDisputed(uint256 indexed id);
+    event FundsDeposited(uint256 agreementId, uint256 amount);
+    event MilestoneReleased(uint256 agreementId, bool success);
 
     /**
-     * @dev Creates a new escrow instance. Only the creator can initiate.
-     * @param _receiver The address that will receive the funds upon release.
-     * @param _agent The address acting as the escrow agent.
-     * @param _amount The amount to be held in escrow.
+     * @notice Creates a new escrow agreement and deposits the funds.
+     * @param _seller The address of the party depositing the funds (usually the seller initially).
+     * @param _buyer The address receiving the funds.
+     * @param _amount The total amount to be held in escrow.
+     * @param _milestone The milestone amount for release (if applicable, could be the full amount initially).
      */
-    function createEscrow(address payable _receiver, address payable _agent, uint256 _amount) public {
-        require(_receiver != address(0), "Receiver cannot be zero address");
-        require(_agent != address(0), "Agent cannot be zero address");
+    function createAgreement(
+        address payable _seller,
+        address payable _buyer,
+        uint256 _amount,
+        uint256 _milestone
+    ) public {
+        require(_seller != address(0) && _buyer != address(0), "Invalid addresses");
         require(_amount > 0, "Amount must be greater than zero");
 
-        uint256 id = nextId++;
-        escrowItems[id] = EscrowItem({
-            receiver: _receiver,
-            escrowAgent: _agent,
+        uint256 currentAgreementId = nextAgreementId++;
+
+        agreements[currentAgreementId] = EscrowAgreement({
+            buyer: _buyer,
+            seller: _seller,
             amount: _amount,
-            state: EscrowState.Created
+            releaseMilestone: _milestone,
+            released: false
         });
 
-        emit EscrowCreated(id, _receiver, _agent, _amount);
+        // In a real system, ETH/ERC20 transfer logic would happen here.
+        // For simplicity in this test script context, we assume the caller handles the actual transfer setup externally or via simulation.
+        emit FundsDeposited(currentAgreementId, _amount);
     }
 
     /**
-     * @dev Locks the escrow after creation by the agent or receiver.
-     * For simplicity, we allow either party to lock it initially.
-     * In a real system, this would likely be strictly controlled by an admin role.
-     * @param _id The ID of the escrow to lock.
+     * @notice Allows the seller to release the escrow funds based on a milestone.
+     * @param _agreementId The ID of the agreement to release.
+     * @param _success Whether the release is successful.
      */
-    function lockEscrow(uint256 _id) public {
-        require(_id > 0 && _id < nextId, "Invalid Escrow ID");
-        EscrowItem storage item = escrowItems[_id];
-        require(item.state == EscrowState.Created, "Cannot lock an uncreated escrow");
+    function releaseFunds(uint256 _agreementId, bool _success) public {
+        require(_agreementId > 0 && _agreementId < nextAgreementId, "Invalid agreement ID");
+        require(!agreements[_agreementId].released, "Agreement already released");
 
-        item.state = EscrowState.Locked;
-        emit EscrowLocked(_id);
+        if (_success) {
+            agreements[_agreementId].released = true;
+            emit MilestoneReleased(_agreementId, true);
+        } else {
+            // Revert or handle failure state if needed in a complex scenario.
+            revert("Release failed");
+        }
     }
 
     /**
-     * @dev Releases the funds to the receiver. Requires the state to be Locked.
-     * @param _id The ID of the escrow to release.
+     * @notice Owner can manage the contract (e.g., pause, admin actions).
      */
-    function releaseEscrow(uint256 _id) public {
-        require(_id > 0 && _id < nextId, "Invalid Escrow ID");
-        EscrowItem storage item = escrowItems[_id];
-
-        require(item.state == EscrowState.Locked, "Escrow must be locked to be released");
-
-        // In a real implementation, the contract would hold the funds (e.g., via a separate Vault or direct transfer mechanism).
-        // For this foundational step, we simulate the state change.
-        
-        item.state = EscrowState.Released;
-        emit EscrowReleased(_id);
+    function setOwner(address _newOwner) public onlyOwner {
+        require(_newOwner != address(0), "Invalid owner");
+        owner = _newOwner;
     }
 
     /**
-     * @dev Marks the escrow as disputed.
-     * @param _id The ID of the escrow to dispute.
+     * @notice Retrieves details of an escrow agreement.
      */
-    function disputeEscrow(uint256 _id) public {
-        require(_id > 0 && _id < nextId, "Invalid Escrow ID");
-        EscrowItem storage item = escrowItems[_id];
-
-        // Only allow disputes if the escrow is currently locked or released (depending on dispute rules).
-        // Here we allow disputes if it's not already disputed.
-        require(item.state == EscrowState.Locked || item.state == EscrowState.Released, "Cannot dispute a Created escrow directly");
-
-        item.state = EscrowState.Disputed;
-        emit EscrowDisputed(_id);
-    }
-
-    /**
-     * @dev View function to check the status of an escrow item.
-     * @param _id The ID of the escrow item.
-     * @return The details of the escrow.
-     */
-    function getEscrowDetails(uint256 _id) public view returns (
-        address receiver,
-        address agent,
+    function getAgreementDetails(uint256 _agreementId) public view returns (
+        address buyer,
+        address seller,
         uint256 amount,
-        EscrowState state
+        uint256 releaseMilestone,
+        bool released
     ) {
-        require(_id > 0 && _id < nextId, "Invalid Escrow ID");
-        EscrowItem storage item = escrowItems[_id];
+        require(_agreementId > 0 && _agreementId < nextAgreementId, "Invalid agreement ID");
+        EscrowAgreement storage agreement = agreements[_agreementId];
         return (
-            item.receiver,
-            item.escrowAgent,
-            item.amount,
-            item.state
+            agreement.buyer,
+            agreement.seller,
+            agreement.amount,
+            agreement.releaseMilestone,
+            agreement.released
         );
     }
 }
