@@ -7,29 +7,74 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Job {
-  id          String   @id @default(uuid())
-  jobId       Int      @unique
-  client      String
-  freelancer  String
-  totalAmount String
-  status      String
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  FAILED
+}
 
-  milestones  Milestone[]
+enum MilestoneStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  FAILED
+}
+
+enum EscrowStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  walletAddress String   @unique // The Web3 address identifier
+  name          String?
+  email         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobs          Job[]
+}
+
+model Job {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String?
+  status        JobStatus @default(OPEN)
+  ownerId       Int
+  owner         User      @relation(fields: [ownerId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  milestones    Milestone[]
+  escrowTxns     EscrowTransaction[]
 }
 
 model Milestone {
-  id             String   @id @default(uuid())
-  jobId          String
-  milestoneIndex Int
-  amount         String
-  status         String
-  submissionHash String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            Int         @id @default(autoincrement())
+  jobId         Int
+  description   String
+  status        MilestoneStatus @default(PENDING)
+  amountDue     Float       // Amount required for this milestone
+  milestoneDate DateTime?
+  job           Job         @relation(fields: [jobId], references: [id])
 
-  job            Job      @relation(fields: [jobId], references: [id])
+  escrowTransactions EscrowTransaction[]
+}
+
+model EscrowTransaction {
+  id            Int          @id @default(autoincrement())
+  jobId         Int
+  milestoneId   Int?         // Nullable if it's a general deposit/withdrawal, but strongly linked to a milestone
+  transactionType String      // e.g., "DEPOSIT", "WITHDRAWAL"
+  amount        Float        // The amount transferred
+  status        EscrowStatus @default(PENDING)
+  transactionDate DateTime    @default(now())
+  relatedMilestone Milestone? @relation(fields: [milestoneId], references: [id])
+
+  job           Job?         @relation(fields: [jobId], references: [id])
 }
