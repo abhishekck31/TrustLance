@@ -1,0 +1,113 @@
+/page.tsx]
+'use client';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+
+// --- Mock Data & Hooks Simulation ---
+interface JobDetail {
+    id: string;
+    title: string;
+    description: string;
+    salary: string;
+    postedBy: string;
+    contractAddress: string;
+}
+
+// Simulate fetching a single job by ID from the contract state
+const mockJobData: Record<string, JobDetail> = {
+    'job1': { id: 'job1', title: 'Senior Solidity Developer', description: 'Seeking an expert in smart contract development. Must have 5+ years experience with ERC standards.', salary: '150k - 180k', postedBy: 'Alice C.', contractAddress: '0xContractABC' },
+    'job2': { id: 'job2', title: 'Web3 Frontend Engineer', description: 'Develop engaging user interfaces for dApps using React and TypeScript.', salary: '120k - 140k', postedBy: 'Bob D.', contractAddress: '0xContractXYZ' },
+    'job3': { id: 'job3', title: 'Blockchain Auditor', description: 'Review security protocols for DeFi applications on Ethereum/Polygon.', salary: '130k - 160k', postedBy: 'Charlie E.', contractAddress: '0xContractDEF' },
+};
+
+// Custom hook simulation to fetch single job data
+const useJobDetails = (jobId: string) => {
+    const [job, setJob] = useState<JobDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        setLoading(true);
+        // Simulate fetching data from the contract state based on ID
+        const timer = setTimeout(() => {
+            const data = mockJobData[jobId];
+            setJob(data || null);
+            setLoading(false);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [jobId]);
+
+    return { job, loading };
+};
+// --- End Mock Simulation ---
+
+
+export default function JobDetailPage() {
+  const params = useParams();
+  const jobId = params.id as string;
+  const router = useRouter();
+
+  const { job, loading } = useJobDetails(jobId);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <p className="ml-3 text-lg text-gray-600">Fetching job details...</p>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+        <div className="text-center py-20 bg-white rounded-lg shadow-md max-w-xl mx-auto mt-10">
+            <h1 className="text-3xl font-bold text-red-600">Job Not Found</h1>
+            <p className="mt-4 text-gray-600">The requested job listing could not be found on the blockchain.</p>
+            <Link href="/listings" className="mt-6 inline-block text-blue-600 hover:underline">Back to Listings</Link>
+        </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto py-8">
+      {/* Header and Back Button */}
+      <div className="flex justify-between items-start border-b pb-4 mb-6">
+        <h1 className="text-4xl font-extrabold text-gray-900">{job.title}</h1>
+        <Button variant="outline" onClick={() => router.back()} className="flex items-center border-blue-500 text-blue-600 hover:bg-blue-50 transition">
+            &larr; Back to Listings
+        </Button>
+      </div>
+
+      {/* Job Details Card */}
+      <div className="bg-white p-8 rounded-lg shadow-2xl border-t-4 border-blue-600">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Job Details</h2>
+          <p className="text-sm font-medium text-gray-500">Contract Address:</p>
+          <code className="block bg-gray-100 p-3 rounded text-lg font-mono text-blue-700">{job.contractAddress}</code>
+        </div>
+
+        <div className="space-y-6 text-lg leading-relaxed text-gray-700">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Job Description</h3>
+            <p>{job.description}</p>
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Compensation Details</h3>
+            <p className="text-4xl font-extrabold text-green-600">{job.salary}</p>
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Posted By</h3>
+            <p>{job.postedBy}</p>
+          </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t flex justify-end">
+            <Button className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md transition">
+                Apply Now (Connect Wallet)
+            </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
