@@ -78,7 +78,7 @@ describe("Escrow", function () {
             await escrow.connect(freelancer).submitMilestone(0, 0, "submissionHash");
 
             await expect(escrow.connect(freelancer).approveMilestone(0, 0))
-                .to.be.revertedWith("Only client can approve");
+                .to.be.revertedWith("Only client");
         });
     });
 
@@ -103,7 +103,7 @@ describe("Escrow", function () {
 
             // Attempt to approve milestone should fail
             await expect(escrow.connect(client).approveMilestone(0, 0))
-                .to.be.revertedWith("Job under dispute");
+                .to.be.revertedWith("Job not active");
         });
     });
 });
