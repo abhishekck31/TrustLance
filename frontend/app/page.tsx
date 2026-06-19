@@ -1,39 +1,59 @@
-import { Inter } from 'next/font/google';
-import { Loader2, Search, PlusCircle } from 'lucide-react';
-import Link;
-import { Button } from '@/components/ui/button'; // Assuming a simple component library hook exists
-import { Wallet } from 'lucide-react';
+'use client';
+import { useState } from 'react';
+import { useAccount, useConnect, useDisconnect, useAddress, useReadContract } from 'wagmi';
+import { publicWalletModal } from 'rainbowkit/modals/publicWalletModal';
+import { ethers } from 'ethers';
 
-const font = Inter({ subsets: ['latin'] });
+export default function WalletLayout() {
+  const { address, isConnected } = useAccount();
+  const { connect, connectors, status } = useConnect();
+  const { disconnect } = useDisconnect();
 
-export default function HomePage() {
+  // Mock Network Detection based on chain state
+  const networkStatus = status === 'success' 
+    ? connectors.length > 0 ? connectors[0].name : 'No Network Detected'
+    : 'Disconnected';
+
+
+  const handleConnect = () => {
+    if (status === 'pending') {
+      connect({ connector: connectors[0] });
+    }
+  };
+
   return (
-    <div className={`${font.className} min-h-screen bg-gray-50 p-8`}>
-      <header className="flex justify-between items-center border-b pb-4 mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 flex items-center">
-          TrustLance Web3 Jobs
-        </h1>
-        <div>
-          <Link href="/create-job" className="mr-4 text-blue-600 hover:text-blue-800 font-medium transition">
-            Create Job
-          </Link>
-          <Link href="/listings" className="mr-4 text-blue-600 hover:text-blue-800 font-medium transition">
-            Job Listings
-          </Link>
+    <div>
+      {isConnected ? (
+        <div className="mt-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          <p>✅ Wallet Connected successfully!</p>
+          <p>Address: {address}</p>
+          <p>Network: {networkStatus}</p>
         </div>
-      </header>
-
-      <main className="space-y-12">
-        {/* Placeholder for dynamic content or dashboard */}
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Welcome to TrustLance</h2>
-            <p className="text-gray-600">Explore decentralized job opportunities and manage your contracts securely via Web3.</p>
+      ) : (
+        <div className="mt-6 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+          <p>⚠️ Please connect your wallet to access features.</p>
+          <button 
+            onClick={() => publicWalletModal()}
+            className="mt-3 px-4 py-2 bg-yellow-500 text-white font-semibold rounded-md hover:bg-yellow-600 transition"
+          >
+            Connect Wallet
+          </button>
         </div>
-      </main>
+      )}
 
-      <footer className="mt-12 pt-6 border-t text-center text-sm text-gray-500">
-        Built with Next.js, Tailwind CSS, and Web3 integration.
-      </footer>
+      {/* Displaying the connection status and prompting connection */}
+      {!isConnected && (
+        <div className="mt-8 text-center">
+            <p className='text-lg font-medium'>Ready to interact with TrustLance?</p>
+            <button 
+              onClick={() => publicWalletModal()}
+              className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150"
+            >
+              Connect Wallet
+            </button>
+        </div>
+      )}
+
     </div>
   );
 }
