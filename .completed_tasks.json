@@ -1,1 +1,1 @@
-["Write the core TrustLance Escrow Solidity smart contract supporting milestones, withdrawal pattern, and basic state machine (Created, Locked, Released, Disputed). Ensure OpenZeppelin access controls."]
+["Write the complete Hardhat deployment and test scripts for the Escrow contract, covering funding, milestone release, and basic access control rules.", "Write the core TrustLance Escrow Solidity smart contract supporting milestones, withdrawal pattern, and basic state machine (Created, Locked, Released, Disputed). Ensure OpenZeppelin access controls."]
