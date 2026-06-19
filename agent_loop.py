@@ -3,10 +3,12 @@ import re
 import subprocess
 import time
 import ollama
+import json
 
 # --- CONFIGURATION ---
 REPO_PATH = os.path.dirname(os.path.abspath(__file__))  # ⚠️ Auto-detected current repo path
 MODEL_NAME = "gemma4:e2b"                     # Your local Google Gemma 4 model
+COMPLETED_TASKS_FILE = os.path.join(REPO_PATH, ".completed_tasks.json")
 
 # --- FULL ROADMAP QUEUE ---
 # The agent will work down this list sequentially, 100% hands-free.
@@ -97,6 +99,22 @@ def parse_and_write_files(ai_response):
         print(f"💾 File updated: {clean_path}")
     return True
 
+# --- MEMORY UTILITIES ---
+def get_completed_tasks():
+    if os.path.exists(COMPLETED_TASKS_FILE):
+        with open(COMPLETED_TASKS_FILE, "r") as f:
+            try:
+                return set(json.load(f))
+            except:
+                return set()
+    return set()
+
+def mark_task_completed(task):
+    completed = get_completed_tasks()
+    completed.add(task)
+    with open(COMPLETED_TASKS_FILE, "w") as f:
+        json.dump(list(completed), f)
+
 # --- ENGINE ---
 def run_continuous_pipeline():
     tech_context = """
@@ -116,9 +134,14 @@ def run_continuous_pipeline():
     Do not add markdown formatting outside the blocks. Do not add casual chatting. Start writing file blocks instantly.
     """
 
-    print(f"🏁 Starting Continuous Pipeline. Found {len(ROADMAP_QUEUE)} total tasks.")
+    completed_tasks = get_completed_tasks()
+    print(f"🏁 Starting Continuous Pipeline. Found {len(ROADMAP_QUEUE)} total tasks ({len([t for t in ROADMAP_QUEUE if t in completed_tasks])} already completed).")
     
     for index, current_task in enumerate(ROADMAP_QUEUE, 1):
+        if current_task in completed_tasks:
+            print(f"\n⏭️  [{index}/{len(ROADMAP_QUEUE)}] SKIPPING (Already Completed): {current_task[:50]}...")
+            continue
+            
         print(f"\n⚡ [{index}/{len(ROADMAP_QUEUE)}] CURRENT GOAL: {current_task}")
         
         # Invoke Gemma 4 with reasoning capability enabled
@@ -135,7 +158,8 @@ def run_continuous_pipeline():
             if parse_and_write_files(ai_output):
                 if run_project_checks():
                     # Sync to remote GitHub master branch
-                    execute_git_pipeline(current_task)
+                    if execute_git_pipeline(current_task):
+                        mark_task_completed(current_task)
             
             # Brief cooldown window to allow OS file handles to clear
             time.sleep(2)

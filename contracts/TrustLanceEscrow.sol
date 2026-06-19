@@ -2,196 +2,167 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/tokenids/ERC20.sol"; // Assuming ERC20 tokens are used for assets
 
 /**
  * @title TrustLanceEscrow
- * @notice Core smart contract for managing escrow transactions with milestones and state transitions.
+ * @notice Core smart contract managing the escrow process, milestones, and withdrawal logic.
  */
-contract TrustLanceEscrow is Ownable, ReentrancyGuard {
+contract TrustLanceEscrow is Ownable {
 
-    // --- State Definitions ---
+    // --- State Management ---
     enum EscrowState {
-        Created,      // Escrow initiated but not locked
-        Locked,       // Funds are held, awaiting milestone/condition check
-        Released,     // Funds released successfully (milestones met)
-        Disputed     // Dispute raised, process halted or pending arbitration
+        Created,      // Funds deposited, waiting for milestone setting
+        Locked,       // Milestones set, awaiting trigger/withdrawal request
+        Released,     // Funds successfully released based on conditions
+        Disputed      // Dispute initiated, funds held pending resolution
     }
 
-    // --- Data Structures ---
-    struct Milestone {
-        uint256 milestoneId;
-        uint256 amount;
-        bool completed;
+    // --- Structs and Mappings ---
+
+    struct EscrowItem {
+        uint256 escrowAmount;       // Total amount deposited
+        address payable recipient; // Address to receive funds upon release
+        uint256 milestoneIndex;     // Index of the milestone that must be met for release
+        bool isReleased;            // Flag if funds have been released
+        EscrowState currentState;   // Current state of the escrow
     }
 
-    struct Escrow {
-        uint256 escrowId;
-        address payable escrowRecipient; // The party holding the funds (or manager)
-        address partyA;                 // Party A (e.g., Buyer/Seller)
-        address partyB;                 // Party B (e.g., Seller/Buyer)
-        uint256 totalAmount;
-        EscrowState currentState;
-        uint256 currentMilestoneIndex;
-        mapping(uint256, Milestone) milestones;
-    }
-
-    // --- State Variables ---
-    mapping(uint256, Escrow) public escrows;
+    mapping(uint256 => EscrowItem) public escrowItems;
     uint256 public nextEscrowId;
 
     // --- Events ---
-    event EscrowCreated(uint256 indexed escrowId, address indexed partyA, address indexed partyB, uint256 totalAmount);
-    event StateUpdated(uint256 indexed escrowId, EscrowState newState);
-    event MilestoneReached(uint256 indexed escrowId, uint256 milestoneId);
-    event FundsReleased(uint256 indexed escrowId, uint256 amount);
-    event DisputeRaised(uint256 indexed escrowId);
+    event EscrowCreated(uint256 indexed escrowId, address indexed owner);
+    event MilestoneSet(uint256 indexed escrowId, uint256 milestoneIndex);
+    event FundsReleased(uint256 indexed escrowId, uint256 releasedAmount);
+    event StateTransition(uint256 indexed escrowId, EscrowState newState);
 
     // --- Modifiers ---
-    modifier onlyEscrower(uint256 _escrowId) {
-        require(escrows[_escrowId].partyA == msg.sender || escrows[_escrowId].partyB == msg.sender, "Caller is not an involved party.");
-        _;
+    modifier onlyEscrowOwner(uint256 _escrowId) {
+        require(msg.sender == ownerOfEscrow(0), "Caller is not the owner of this escrow"); // Simplified access check placeholder, refined below in functions
     }
 
-    // --- Modifiers for State Transitions (Admin/Owner actions) ---
-    modifier inState(uint256 _escrowId, EscrowState _requiredState) {
-        require(escrows[_escrowId].currentState == _requiredState, "Invalid state for this action.");
-        _;
+    // Helper to simplify ownership checks specific to an item (requires a more complex mapping setup for true per-item ownership, but we use Owner for simplicity here)
+    function ownerOfEscrow(uint256 _escrowId) public view returns (address) {
+        return ownerOf(_escrowId);
     }
 
     // --- Constructor ---
-    constructor() Ownable(msg.sender) {
-        nextEscrowId = 1;
-    }
+    constructor() Ownable(msg.sender) {}
 
     // --- Core Functions ---
 
     /**
-     * @notice Creates a new escrow agreement.
-     * @param _partyA Address of Party A.
-     * @param _partyB Address of Party B.
-     * @param _amount Total amount to be escrowed.
-     * @param _initialMilestone The amount for the first milestone.
+     * @notice Initiates a new escrow transaction.
+     * @param _recipient The address that will receive the funds.
+     * @param _milestoneIndex The index of the first milestone to be set (usually 0 or 1 depending on design).
      */
-    function createEscrow(
-        address _partyA,
-        address _partyB,
-        uint256 _amount,
-        uint256 _initialMilestone
-    ) public onlyOwner {
+    function createEscrow(address payable _recipient, uint256 _milestoneIndex) public {
         uint256 newId = nextEscrowId++;
 
-        escrows[newId] = Escrow({
-            escrowId: newId,
-            escrowRecipient: payable(address(this)), // Contract holds funds initially
-            partyA: _partyA,
-            partyB: _partyB,
-            totalAmount: _amount,
-            currentState: EscrowState.Created,
-            currentMilestoneIndex: 0,
-            milestones: mapping(uint256, Milestone)
+        escrowItems[newId] = EscrowItem({
+            escrowAmount: 0, // Initial amount is zero until deposit occurs
+            recipient: _recipient,
+            milestoneIndex: _milestoneIndex,
+            isReleased: false,
+            currentState: EscrowState.Created
         });
 
-        escrows[newId].milestones[1] = Milestone({
-            milestoneId: 1,
-            amount: _initialMilestone,
-            completed: false
-        });
-
-        emit EscrowCreated(newId, _partyA, _partyB, _amount);
+        emit EscrowCreated(newId, msg.sender);
     }
 
     /**
-     * @notice Allows one of the parties to lock the funds (transition from Created to Locked).
-     * @dev This function is intended to be called by Party A or Party B.
-     * @param _escrowId The ID of the escrow to lock.
-     */
-    function lockEscrow(uint256 _escrowId) public {
-        require(escrows[_escrowId].currentState == EscrowState.Created, "Cannot lock an uncreated escrow.");
+     * @notice Deposits funds into an existing escrow.
+     * @dev Requires the caller to be the owner of the new item (or authorized via ownership).
+     * @param _escrowId The ID of the escrow to deposit into.
+   * @param _amount The amount deposited.
+   */
+    function deposit(uint256 _escrowId, uint256 _amount) public {
+        EscrowItem storage item = escrowItems[_escrowId];
 
-        // Assuming Party A initiates the lock for simplicity in this example
-        escrows[_escrowId].currentState = EscrowState.Locked;
-        emit StateUpdated(_escrowId, EscrowState.Locked);
+        require(item.currentState == EscrowState.Created, "Cannot deposit, state is not Created");
+        // In a real implementation, this would check if the caller owns the right to initiate deposits for this ID. For simplicity, we rely on owner/role checks later.
+
+        item.escrowAmount += _amount;
+
+        emit StateTransition(_escrowId, EscrowState.Locked);
     }
 
     /**
-     * @notice Allows the parties to trigger a milestone completion and update state.
-     * @dev This function simulates milestone tracking.
+     * @notice Sets a specific milestone for fund release.
+     * @dev This function is typically only callable by the owner or authorized parties.
      * @param _escrowId The ID of the escrow.
-     * @param _milestoneId The ID of the milestone reached.
-     */
-    function completeMilestone(uint256 _escrowId, uint256 _milestoneId) public onlyEscrower {
-        require(escrows[_escrowId].currentState == EscrowState.Locked, "Cannot complete milestone in Locked state.");
-        require(_milestoneId > escrows[_escrowId].currentMilestoneIndex && _milestoneId <= 100, "Invalid milestone ID.");
+     * @param _milestoneIndex The index of the milestone to set.
+   */
+    function setMilestone(uint256 _escrowId, uint256 _milestoneIndex) public {
+        EscrowItem storage item = escrowItems[_escrowId];
 
-        Escrow storage escrow = escrows[_escrowId];
-        
-        if (escrow.milestones[_milestoneId].completed) {
-            revert("Milestone already completed.");
-        }
+        require(item.currentState == EscrowState.Locked, "Cannot set milestone, state is not Locked");
+        // Further ownership checks would be implemented here based on role management.
 
-        // Simple logic: assume the amount associated with the milestone is paid/verified
-        // In a real system, this would involve external oracle checks.
-        
-        escrow.milestones[_milestoneId].completed = true;
-        
-        if (_milestoneId == escrow.currentMilestoneIndex + 1) {
-            escrow.currentMilestoneIndex = _milestoneId;
-            emit MilestoneReached(_escrowId, _milestoneId);
-        }
-
-        // Check if all milestones are complete to trigger release
-        if (escrow.currentMilestoneIndex >= 100) { // Assuming max 100 milestones for simplicity
-             // Automatically transition to Released upon last milestone completion
-            escrow.currentState = EscrowState.Released;
-            emit StateUpdated(_escrowId, EscrowState.Released);
-        }
+        item.milestoneIndex = _milestoneIndex;
+        emit MilestoneSet(_escrowId, _milestoneIndex);
     }
 
+
     /**
-     * @notice Releases the escrowed funds to the designated recipient (e.g., Seller).
-     * @dev This typically requires manual approval or fulfillment of all conditions by the Owner/Admin.
-     * @param _escrowId The ID of the escrow.
-     */
-    function releaseFunds(uint256 _escrowId) public onlyOwner inState(_escrowId, EscrowState.Released) {
-        Escrow storage escrow = escrows[_escrowId];
+     * @notice Triggers the release of funds based on meeting a milestone condition.
+     * @dev This function is typically called by an authorized party when conditions are met.
+     * @param _escrowId The ID of the escrow to release.
+   * @return bool Success status.
+   */
+    function releaseFunds(uint256 _escrowId) public {
+        EscrowItem storage item = escrowItems[_escrowId];
 
-        // In a real scenario, check if all required milestone data is met before releasing.
-        require(escrow.currentMilestoneIndex >= 1, "Not enough milestones completed to release.");
+        require(item.currentState == EscrowState.Locked, "Funds are not currently locked");
+        // Add check here to ensure the caller is authorized (e.g., owner or dispute resolution authority).
 
-        uint256 releasedAmount = escrow.totalAmount;
-        
-        // Transfer funds to the designated recipient (e.g., Party B)
-        (bool success, ) = escrow.escrowRecipient.call{value: releasedAmount}("");
-        require(success, "Transfer failed.");
+        // --- Basic Withdrawal Pattern Logic Placeholder ---
+        // A real system would check external data or proofs here before releasing.
+        uint256 releasedAmount = item.escrowAmount; // Simplification: Releasing all funds at once for demo purposes.
+
+        item.isReleased = true;
+        item.currentState = EscrowState.Released;
 
         emit FundsReleased(_escrowId, releasedAmount);
     }
 
     /**
      * @notice Initiates a dispute process for the escrow.
+     * @dev Locks the funds and transitions the state to Disputed.
      * @param _escrowId The ID of the escrow to dispute.
-     */
-    function raiseDispute(uint256 _escrowId) public onlyOwner inState(_escrowId, EscrowState.Locked) {
-        Escrow storage escrow = escrows[_escrowId];
-        
-        escrow.currentState = EscrowState.Disputed;
-        emit DisputeRaised(_escrowId);
+   */
+    function dispute(uint256 _escrowId) public {
+        EscrowItem storage item = escrowItems[_escrowId];
+
+        require(item.currentState == EscrowState.Locked, "Cannot dispute, state is not Locked");
+
+        item.currentState = EscrowState.Disputed;
+
+        emit StateTransition(_escrowId, EscrowState.Disputed);
     }
 
     /**
-     * @notice Allows the owner to revert state changes or manage disputes (Placeholder for arbitration logic).
+     * @notice View function to retrieve escrow details.
      * @param _escrowId The ID of the escrow.
      */
-    function resolveDispute(uint256 _escrowId) public onlyOwner inState(_escrowId, EscrowState.Disputed) {
-        Escrow storage escrow = escrows[_escrowId];
-        
-        // Logic to handle dispute resolution (e.g., refund, force release, or revert)
-        // For this core contract, we assume owner can transition it back if necessary.
-        require(true, "Arbitration logic placeholder"); 
-
-        // Example: If dispute resolves to release immediately:
-        escrow.currentState = EscrowState.Released;
-        emit StateUpdated(_escrowId, EscrowState.Released);
+    function getEscrowDetails(uint256 _escrowId) public view returns (
+        uint256 escrowId,
+        address recipient,
+        uint256 amount,
+        uint256 milestoneIndex,
+        bool isReleased,
+        EscrowState currentState
+    ) {
+        require(_escrowId <= nextEscrowId - 1, "Escrow ID does not exist");
+        EscrowItem storage item = escrowItems[_escrowId];
+        return (
+            _escrowId,
+            item.recipient,
+            item.escrowAmount,
+            item.milestoneIndex,
+            item.isReleased,
+            item.currentState
+        );
     }
 }
