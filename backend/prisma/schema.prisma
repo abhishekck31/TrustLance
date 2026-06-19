@@ -1,30 +1,37 @@
-// Define the Prisma schema for PostgreSQL persistence of dispute metadata.
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model User {
+  id          Int      @id @default(autoincrement())
+  username    String   @unique
+  email       String   @unique
+  reputation  Float    @default(0.0) // Placeholder for reputation score
+  bio         String?
+  portfolioId String?
+  skills      Skill[]
+  createdAt   DateTime @default(now())
 }
 
-model Dispute {
-  id            Int      @id @default(autoincrement())
-  disputeId     Uint256  @unique
-  assetOwner    String
-  amount       BigInt    // Storing large amounts as BigInt for safety
-  isFrozen      Boolean  @default(true)
-  disputeReason String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model Skill {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  // In a real app, this would link to a separate SkillCategory table for better structure.
 }
 
-// Optional: A table to track token freezes, if we move state slightly off-chain.
-model FrozenAsset {
-  id           Int      @id @default(autoincrement())
-  disputeId    Uint256  @unique
-  assetAddress String // The address of the asset that is frozen
-  amount      BigInt
-  status      String   // e.g., 'PENDING', 'FROZEN', 'RESOLVED'
-  createdAt    DateTime @default(now())
+// Placeholder for future expansion (if needed)
+model Portfolio {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String
+  description String
+  imageUrl    String?
+  user        User      @relation(fields: [userId], references: [id])
 }
