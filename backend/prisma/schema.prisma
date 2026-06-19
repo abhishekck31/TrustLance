@@ -1,3 +1,5 @@
+// Defining the database schema for storing notifications
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,31 +9,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Notification {
   id          Int      @id @default(autoincrement())
-  username    String   @unique
-  email       String   @unique
-  reputation  Float    @default(0.0) // Placeholder for reputation score
-  bio         String?
-  portfolioId String?
-  skills      Skill[]
+  type        String   // e.g., "MILESTONE_SUBMITTED", "ESCROW_FUNDED"
+  message     String   // Detailed description of the event
+  recipientId String   // Address of the client or freelancer
+  eventType   String   // Specific type for filtering
+  status      String   // PENDING, SENT, FAILED
   createdAt   DateTime @default(now())
-}
-
-model Skill {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique
-  userId    Int
-  user      User    @relation(fields: [userId], references: [id])
-  // In a real app, this would link to a separate SkillCategory table for better structure.
-}
-
-// Placeholder for future expansion (if needed)
-model Portfolio {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  title       String
-  description String
-  imageUrl    String?
-  user        User      @relation(fields: [userId], references: [id])
+  isRead      Boolean  @default(false)
+  blockchainTxHash String? // Link back to the transaction that triggered it
 }
