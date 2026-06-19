@@ -1,17 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model Project {
+  id          String   @id @db.ObjectId
+  name        String
+  disputed   Boolean   @default(false)
+  status      String    // e.g., 'Disputed', 'Voting', 'Resolved'
+  currentVotes Int       @default(0)
+  totalStaked   Int       @default(0)
 }
 
-model JobMetadataPin {
-  id          Int       @id @default(autoincrement())
-  jobId       String    @unique // Reference to the original job ID
-  ipfsHash    String    @unique // The resulting IPFS hash (CID)
-  metadata    Json      // The full serialized metadata payload (for verification/storage if not storing directly on IPFS)
-  pinnedAt    DateTime  @default(now())
-  createdAt   DateTime  @default(now())
+model Vote {
+  id          String   @id @db.ObjectId
+  projectId   String   @db.ObjectId
+  jurorId     String   // Assuming a user ID reference
+  voteValue   Int      // Weight or score of the vote
+  timestamp   DateTime
+  isFinal     Boolean  @default(false)
+}
+
+model StakingPool {
+  id          String   @id @db.ObjectId
+  projectId   String   @db.ObjectId
+  stakedAmount Int
+  totalReward Float
+  lastUpdated DateTime
+}
+
+// Example of a Juror profile (simplified for dashboard context)
+model JurorProfile {
+  id            String   @id @db.ObjectId
+  walletAddress String
+  name          String
 }

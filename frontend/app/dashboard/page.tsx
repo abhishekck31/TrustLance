@@ -1,129 +1,157 @@
-// This file serves as the main unified dashboard page for both clients and freelancers.
-import { Zap, Clock, DollarSign, Activity } from 'lucide-react';
+'use client';
 
-// Mock data structure for demonstration purposes
-const mockActiveJobs = [
-  { id: 101, title: "Web3 Contract Audit", client: "Alice Corp", status: "In Progress", deadline: "2024-08-15" },
-  { id: 102, title: "Smart Contract Deployment", client: "Bob Ventures", status: "Awaiting Review", deadline: "2024-09-01" },
-  { id: 103, title: "Tokenomics Strategy", client: "Charlie LLC", status: "Completed", deadline: "2024-07-20" },
-];
+import React from 'react';
+import { ArrowRight, Clock, DollarSign } from 'lucide-react';
 
-const mockActivityLog = [
-  { id: 1, timestamp: "2024-07-28T10:30:00Z", description: "New job 'Web3 Contract Audit' assigned by Alice Corp." },
-  { id: 2, timestamp: "2024-07-27T15:45:00Z", description: "Client updated payment terms for project ID 101." },
-  { id: 3, timestamp: "2024-07-26T09:00:00Z", description: "Freelancer submitted initial proposal for Tokenomics Strategy." },
-];
-
-// Reusable Widget Component
-interface JobWidgetProps {
-  job: typeof mockActiveJobs[0];
+// --- Mock Data Types (Based on expected backend response) ---
+interface DisputedProject {
+  id: string;
+  name: string;
+  status: 'Disputed' | 'Voting';
+  currentVotes: number;
 }
 
-const JobWidget: React.FC<JobWidgetProps> = ({ job }) => (
-  <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 transition duration-300 hover:shadow-xl">
-    <div className="flex items-center justify-between mb-4 pb-3 border-b">
-      <h2 className="text-xl font-semibold text-gray-800">{job.title}</h2>
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-        job.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
-        job.status === 'Completed' ? 'bg-green-100 text-green-700' :
-        'bg-yellow-100 text-yellow-700'
-      }`}>
-        {job.status}
-      </span>
-    </div>
-    <div className="space-y-3">
-      <p className="text-sm text-gray-600 flex items-center"><Clock className="w-4 h-4 mr-2 text-indigo-500" /> Deadline: <span className="font-medium text-gray-800">{job.deadline}</span></p>
-      <p className="text-sm text-gray-600 flex items-center"><DollarSign className="w-4 h-4 mr-2 text-indigo-500" /> Client: <span className="font-medium text-gray-800">{job.client}</span></p>
-      <button className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold transition duration-150">
-        View Details
+interface VotingTimeline {
+  projectId: string;
+  projectName: string;
+  votesRemaining: number;
+  endDate: string;
+}
+
+interface StakingMetric {
+  projectId: string;
+  stakedAmount: number;
+  totalReward: number;
+}
+
+// --- Mock Data Fetching Function (Simulating API call) ---
+async function fetchDashboardData(): Promise<{ disputedProjects: DisputedProject[], openVotingTimelines: VotingTimeline[], stakingPoolMetrics: StakingMetric[] }> {
+  // In a real application, this would be an actual fetch('/api/dashboard') call.
+  // We use mock data here to demonstrate the UI structure execution.
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
+
+  return {
+    disputedProjects: [
+      { id: 'p1', name: 'QuantumLeap Token Dispute', status: 'Voting', currentVotes: 15 },
+      { id: 'p2', name: 'AI Ethics Protocol Vote', status: 'Disputed', currentVotes: 42 },
+    ],
+    openVotingTimelines: [
+      { projectId: 'p1', projectName: 'QuantumLeap Token Dispute', votesRemaining: 5, endDate: '2024-08-30' },
+      { projectId: 'p2', projectName: 'AI Ethics Protocol Vote', votesRemaining: 10, endDate: '2024-09-15' },
+    ],
+    stakingPoolMetrics: [
+      { projectId: 'p1', stakedAmount: 150000, totalReward: 5000.50 },
+      { projectId: 'p2', stakedAmount: 85000, totalReward: 2100.75 },
+    ],
+  };
+}
+
+// --- Component Functions ---
+
+const DisputedProjectsCard: React.FC<{ project: DisputedProject }> = ({ project }) => (
+  <div className="bg-white p-6 rounded-xl shadow border border-red-200 transition duration-300 hover:shadow-lg">
+    <h3 className="text-xl font-bold text-gray-800 mb-2">{project.name}</h3>
+    <p className={`text-sm font-medium mb-4 ${project.status === 'Voting' ? 'text-blue-600' : 'text-red-600'}`}>
+      Status: {project.status}
+    </p>
+    <div className="space-y-2">
+      <p>Current Votes: <span className="font-semibold text-lg text-indigo-600">{project.currentVotes}</span></p>
+      <button className="w-full mt-4 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition">
+        View Details & Vote
       </button>
     </div>
   </div>
 );
 
-// Reusable Activity Log Component
-const ActivityLog: React.FC<{ log: typeof mockActivityLog }> = ({ log }) => (
-  <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-      <Activity className="w-5 h-5 mr-2 text-red-500" /> Recent Activity Log
-    </h3>
-    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-      {log.map((item) => (
-        <div key={item.id} className="border-b pb-3 last:border-b-0">
-          <p className="text-sm text-gray-700 mb-1">{item.description}</p>
-          <p className="text-xs text-gray-500">
-            {new Date(item.timestamp).toLocaleString()}
-          </p>
-        </div>
-      ))}
+const VotingTimelineCard: React.FC<{ timeline: VotingTimeline }> = ({ timeline }) => (
+  <div className="bg-white p-5 rounded-xl shadow border border-blue-200 flex justify-between items-center">
+    <div>
+      <h4 className="text-lg font-semibold text-gray-800">{timeline.projectName}</h4>
+      <p className="text-sm text-gray-600 mt-1">Project ID: {timeline.projectId}</p>
+    </div>
+    <div className="text-right">
+      <div className="flex items-center text-blue-600 font-medium mb-2"><Clock className="w-5 h-5 mr-2" /> Timeline Ends:</div>
+      <span className="text-xl font-bold">{timeline.endDate}</span>
+    </div>
+  </div>
+);
+
+const StakingMetricsCard: React.FC<{ metric: StakingMetric }> = ({ metric }) => (
+  <div className="bg-white p-5 rounded-xl shadow border border-green-200 flex justify-between items-center">
+    <div>
+      <h4 className="text-lg font-semibold text-gray-800">Staking Pool: {metric.projectId}</h4>
+      <p className="text-sm text-gray-600 mt-1">Total Staked: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(metric.stakedAmount)}</p>
+    </div>
+    <div className="text-right">
+      <div className="flex items-center text-green-600 font-medium mb-2"><DollarSign className="w-5 h-5 mr-2" /> Total Reward:</div>
+      <span className="text-xl font-bold text-green-700">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(metric.totalReward)}</span>
     </div>
   </div>
 );
 
 
-export default function DashboardPage() {
+// --- Main Dashboard Page ---
+
+export default async function JurorDashboard() {
+  const data = await fetchDashboardData();
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Unified Dashboard</h1>
-        <p className="text-lg text-gray-600">Overview of Active Projects and Recent Interactions</p>
+    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+      <header className="mb-10 border-b pb-4">
+        <h1 className="text-4xl font-extrabold text-gray-900 flex items-center">
+          TrustLance Juror Dashboard
+        </h1>
+        <p className="text-gray-600 mt-2">Your portal for disputed projects, voting timelines, and staking metrics.</p>
       </header>
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: Active Jobs Widgets (2/3 width) */}
-        <div className="lg:col-span-2 space-y-8">
-          <h2 className="text-2xl font-bold text-gray-900 border-b pb-2">Active Jobs</h2>
-          
-          {/* Structural Active Jobs Widgets Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {mockActiveJobs.map((job) => (
-              <JobWidget key={job.id} job={job} />
+      {/* Section 1: Disputed Projects */}
+      <section className="mb-12">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Disputed Projects</h2>
+        {data.disputedProjects.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {data.disputedProjects.map(project => (
+              <DisputedProjectsCard key={project.id} project={project} />
             ))}
           </div>
-
-          {/* Recent Activity Log Component */}
-          <ActivityLog log={mockActivityLog} />
-        </div>
-
-        {/* Right Column: Quick Stats/Calls to Action (1/3 width) */}
-        <div className="lg:col-span-1 space-y-8">
-          {/* Placeholder for quick stats widgets */}
-          <div className="bg-white p-6 rounded-xl shadow-lg border border-indigo-200">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-              <Zap className="w-5 h-5 mr-2 text-red-500" /> Performance Summary
-            </h3>
-            <div className="space-y-4">
-                <div className="flex justify-between border-b pb-2">
-                    <span className="font-medium text-gray-600">Total Revenue (MTD)</span>
-                    <span className="text-xl font-bold text-green-600">$15,450.00</span>
-                </div>
-                 <div className="flex justify-between border-b pb-2">
-                    <span className="font-medium text-gray-600">Pending Tasks</span>
-                    <span className="text-xl font-bold text-yellow-600">3 Tasks</span>
-                </div>
-                 <div className="flex justify-between pt-4 border-t">
-                    <span className="font-medium text-gray-600">Up for Review</span>
-                    <span className="text-xl font-bold text-blue-600">1 Job</span>
-                </div>
-            </div>
+        ) : (
+          <div className="text-center p-10 bg-white rounded-xl shadow">
+            <p className="text-xl text-gray-500">No disputed projects currently listed.</p>
           </div>
+        )}
+      </section>
 
-           {/* CTA Card */}
-           <div className="bg-indigo-600 text-white p-6 rounded-xl shadow-lg flex items-center justify-between">
-                <div>
-                    <h3 className="text-xl font-bold mb-2">Start New Project</h3>
-                    <p className="text-indigo-200">Access the platform to initiate your next contract.</p>
-                </div>
-                <a href="/new-project" className="bg-white text-indigo-600 px-4 py-2 rounded-full font-semibold hover:bg-indigo-50 transition">
-                    Create Job
-                </a>
-           </div>
+      {/* Section 2: Open Voting Timelines */}
+      <section className="mb-12">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Open Voting Timelines</h2>
+        {data.openVotingTimelines.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {data.openVotingTimelines.map(timeline => (
+              <VotingTimelineCard key={timeline.projectId} timeline={timeline} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center p-10 bg-white rounded-xl shadow">
+            <p className="text-xl text-gray-500">No active voting timelines found.</p>
+          </div>
+        )}
+      </section>
 
-        </div>
-      </div>
+      {/* Section 3: Staking Pool Metrics */}
+      <section>
+        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Staking Pool Metrics</h2>
+        {data.stakingPoolMetrics.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            {data.stakingPoolMetrics.map(metric => (
+              <StakingMetricsCard key={metric.projectId} metric={metric} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center p-10 bg-white rounded-xl shadow">
+            <p className="text-xl text-gray-500">No staking pool metrics found.</p>
+          </div>
+        )}
+      </section>
+
     </div>
   );
 }
