@@ -1,34 +1,30 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
+// Define the Prisma schema for PostgreSQL persistence of dispute metadata.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Milestone {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  status      MilestoneStatus // e.g., PENDING, APPROVED, REJECTED
-  progress    Int       @default(0) // Percentage complete
-  submittedAt DateTime  @default(now())
-  approvedAt  DateTime?
-  approverId  String?   // Reference to the user/role who approved it
+generator client {
+  provider = "prisma-client-js"
 }
 
-enum MilestoneStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  IN_REVIEW
+model Dispute {
+  id            Int      @id @default(autoincrement())
+  disputeId     Uint256  @unique
+  assetOwner    String
+  amount       BigInt    // Storing large amounts as BigInt for safety
+  isFrozen      Boolean  @default(true)
+  disputeReason String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
-// Example User model required for tracking approvals
-model User {
-  id    String @id @default(uuid())
-  email String @unique
-  name  String
-  role  String // e.g., ADMIN, MANAGER
+// Optional: A table to track token freezes, if we move state slightly off-chain.
+model FrozenAsset {
+  id           Int      @id @default(autoincrement())
+  disputeId    Uint256  @unique
+  assetAddress String // The address of the asset that is frozen
+  amount      BigInt
+  status      String   // e.g., 'PENDING', 'FROZEN', 'RESOLVED'
+  createdAt    DateTime @default(now())
 }
