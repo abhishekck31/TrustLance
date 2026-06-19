@@ -1,0 +1,72 @@
+/page.tsx]
+import { notFound } from "next/navigation"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Loader2 } from "lucide-react"
+
+// Placeholder for fetching job data based on ID
+interface Job {
+    id: string
+    title: string
+    description: string
+    salary: number
+    contractAddress: string // Example contract link
+}
+
+// Simulate fetching data (Replace this with actual use of useQuery/useSession)
+async function getJobById(id: string): Promise<Job> {
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    if (id === "123") {
+        return {
+            id: "123",
+            title: "Senior Web3 Developer",
+            description: "Seeking an experienced developer for a new decentralized application project.",
+            salary: 150000,
+            contractAddress: "0xAbC123..."
+        }
+    } else {
+        throw new Error("Job not found")
+    }
+}
+
+export default async function JobDetailPage({ params }: { params: { id: string } }) {
+    const jobId = params.id;
+
+    try {
+        const job = await getJobById(jobId);
+        return (
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="p-6 max-w-4xl mx-auto bg-white shadow-lg rounded-xl mt-10"
+            >
+                <header className="mb-8 border-b pb-4">
+                    <h1 className="text-4xl font-extrabold text-gray-900 mb-2">{job.title}</h1>
+                    <p className="text-lg text-indigo-600 font-medium">Posted on TrustLance</p>
+                </header>
+
+                <div className="space-y-6">
+                    {/* Contract/Location Info */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-2">Contract Details</h2>
+                        <p><strong>Salary:</strong> ${job.salary.toLocaleString()}</p>
+                        <p><strong>Contract Address:</strong> <a href={`https://etherscan.io/address/${job.contractAddress}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 truncate block mt-1">
+                            {job.contractAddress}
+                        </a></p>
+                    </div>
+
+                    {/* Job Description */}
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-3">Job Description</h2>
+                        <div className="prose max-w-none text-gray-700 leading-relaxed border p-4 rounded-lg bg-white">
+                            {job.description}
+                        </div>
+                    </div>
+
+                </div>
+            </motion.div>
+        )
+    } catch (error) {
+        notFound()
+    }
+}
