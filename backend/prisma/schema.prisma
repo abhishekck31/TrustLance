@@ -1,22 +1,17 @@
-// Defining the database schema for storing notifications
-
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Notification {
-  id          Int      @id @default(autoincrement())
-  type        String   // e.g., "MILESTONE_SUBMITTED", "ESCROW_FUNDED"
-  message     String   // Detailed description of the event
-  recipientId String   // Address of the client or freelancer
-  eventType   String   // Specific type for filtering
-  status      String   // PENDING, SENT, FAILED
-  createdAt   DateTime @default(now())
-  isRead      Boolean  @default(false)
-  blockchainTxHash String? // Link back to the transaction that triggered it
+generator client {
+  provider = "prisma-client-js"
+}
+
+model JobMetadataPin {
+  id          Int       @id @default(autoincrement())
+  jobId       String    @unique // Reference to the original job ID
+  ipfsHash    String    @unique // The resulting IPFS hash (CID)
+  metadata    Json      // The full serialized metadata payload (for verification/storage if not storing directly on IPFS)
+  pinnedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
 }
