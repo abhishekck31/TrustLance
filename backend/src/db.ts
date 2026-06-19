@@ -1,17 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 
-let prisma: PrismaClient;
+const prisma = new PrismaClient();
 
-if (process.env.NODE_ENV === 'production') {
-  prisma = new PrismaClient();
-} else {
-  // Use a global variable in development to avoid recreating the client on every hot reload
-  if (!global.prisma) {
-    global.prisma = new PrismaClient();
+export async function dbQuery(query: string, params?: any): Promise<any> {
+  try {
+    const result = await prisma.$queryRaw(query, params);
+    return result;
+  } catch (error) {
+    console.error('Database query error:', error);
+    throw new Error('Failed to execute database query.');
   }
-  prisma = global.prisma;
 }
 
-export const db = prisma;
-
-// Note: In a real application, connection pooling and robust error handling would be added here.
+export default prisma;
