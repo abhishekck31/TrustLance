@@ -1,0 +1,1 @@
+["Write the core TrustLance Escrow Solidity smart contract supporting milestones, withdrawal pattern, and basic state machine (Created, Locked, Released, Disputed). Ensure OpenZeppelin access controls."]

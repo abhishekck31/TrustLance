@@ -4,100 +4,90 @@ const { ethers } = require("hardhat");
 describe("Escrow Contract", function () {
     let Escrow;
     let escrowInstance;
-    let owner;
-    let buyer;
-    let seller;
+    let deployer;
+    let depositor1;
+    let depositor2;
 
-    // Define constants for testing
-    const TEST_AMOUNT = ethers.constants.Address * 1000 ether; // Use a large fake value for realistic amounts in tests (adjust as needed)
-    const RELEASE_MILESTONE = 500 ether;
+    // Define addresses for testing
+    const OWNER_ADDRESS = ethers.provider.send("eth_address", []); // This will be the address of the first account created by Hardhat, usually the deployer in a specific test setup. We'll rely on deployment context if possible, but here we use the test runner context implicitly.
 
     before(async function () {
+        // Setup accounts: deployer (owner), depositor 1, depositor 2
+        [deployer, depositor1, depositor2] = await ethers.getSigners();
+
         // Deploy the contract
         Escrow = await ethers.getContractFactory("Escrow");
         escrowInstance = await Escrow.deploy();
+
         await escrowInstance.deployed();
-
-        // Setup addresses (using hardhat accounts)
-        owner = await ethers.getSigner();
-        buyer = ethers.AddressZero; // Will be set via signer later if needed, but here we use zero for initial setup clarity
-        seller = ethers.AddressZero;
-
-        // Set the deployer as the owner
-        await escrowInstance.setOwner(owner.address); 
     });
 
-    // --- Access Control Tests ---
-    describe("Access Control", function () {
-        it("Should set the deployer as the owner", async function () {
-            const ownerAddress = await escrowInstance.owner();
-            expect(ownerAddress).to.equal(owner.address);
-        });
-
-        it("Only the owner should be able to change the owner", async function () {
-            await expect(escrowInstance.setOwner(ethers.AddressZero)).to.be.revertedWith("Invalid owner");
-        });
+    it("Should be deployed by the owner", async function () {
+        // Assuming 'deployer' is the account that initiated deployment (the deployer role)
+        expect(await escrowInstance.owner()).to.equal(deployer.address);
     });
 
-    // --- Funding Tests ---
-    describe("Funding and Agreement Creation", function () {
-        it("Should successfully create a new agreement and deposit funds", async function () {
-            // Since we cannot simulate real ETH transfers easily in unit tests without mock tokens or setup, 
-            // we focus on the contract logic flow and ID assignment.
+    describe("Funding Tests", function () {
+        it("Should allow a user to deposit funds successfully", async function () {
+            const amountToSend = ethers.utils.parseEther("100");
             
-            // Simulate calling the function (assuming addresses are set correctly)
-            await escrowInstance.createAgreement(
-                seller, // The address that initiates the creation (conceptually the seller depositing)
-                buyer,  // The recipient
-                TEST_AMOUNT,
-                RELEASE_MILESTONE
-            );
+            // Depositor 1 deposits funds
+            await escrowInstance.deposit(depositor1.address, amountToSend);
 
-            const agreementId = 1; // Assuming it's the first agreement created
-            
-            // Verify that an agreement exists (must check if index is valid based on deployment)
-            const details = await escrowInstance.getAgreementDetails(agreementId);
-            
-            expect(details[0]).to.equal(buyer); // Buyer address check
-            expect(details[1]).to.equal(seller); // Seller address check
-            expect(details[2]).to.equal(TEST_AMOUNT); // Amount check
-            expect(details[3]).to.equal(RELEASE_MILESTONE); // Milestone check
-            expect(details[4]).to.be.false; // Must not be released initially
+            // Check if the total number of items is correct (should be 1)
+            expect(await escrowInstance.nextId()).to.equal(1);
+
+            // Verify that the deposit exists and hasn't been released
+            let item = await escrowInstance.escrowItems(1);
+            expect(item.amount).to.equal(amountToSend);
+            expect(item.released).to.be.false;
         });
 
-        it("Should prevent creating agreements with zero amount", async function () {
-            await expect(escrowInstance.createAgreement(seller, buyer, 0, RELEASE_MILESTONE)).to.be.revertedWith("Amount must be greater than zero");
+        it("Should revert if a zero or negative amount is deposited", async function () {
+            // Attempt to deposit 0 Ether
+            await expect(escrowInstance.deposit(depositor1.address, 0)).to.be.revertedWith("Deposit amount must be positive");
+            
+            // Note: Testing negative amounts requires more complex setup if Solidity strict checks are used, but we test the explicit requirement.
         });
     });
 
-    // --- Milestone Release Tests ---
-    describe("Milestone Release", function () {
-        let agreementId;
+    describe("Release Tests (Access Control)", function () {
+        it("Owner should be able to release funds for an escrow item", async function () {
+            const amountToSend = ethers.utils.parseEther("50");
+            
+            // Setup funding
+            await escrowInstance.deposit(depositor1.address, amountToSend);
 
-        before(async function () {
-            // Setup a valid agreement first
-            await escrowInstance.createAgreement(seller, buyer, TEST_AMOUNT, RELEASE_MILESTONE);
-            agreementId = 1;
+            // Owner releases the funds
+            await escrowInstance.releaseFunds(1);
+
+            // Check status after release
+            let item = await escrowInstance.escrowItems(1);
+            expect(item.released).to.be.true;
+
+            // Verify that Depositor 1 actually received the funds (requires interaction with an external wallet setup for full end-to-end testing, but we check contract state)
+            // In a real test environment connected to a private network or funded locally, this call would succeed. We assert the contract logic flow here.
         });
 
-        it("Should successfully release funds when the condition is met", async function () {
-            // Test successful release
-            await escrowInstance.releaseFunds(agreementId, true);
+        it("A non-owner should not be able to release funds", async function () {
+            const amountToSend = ethers.utils.parseEther("10");
+            
+            // Setup funding
+            await escrowInstance.deposit(depositor2.address, amountToSend);
 
-            const details = await escrowInstance.getAgreementDetails(agreementId);
-            expect(details[4]).to.be.true; // Check if released flag is true
+            // Attempt by a non-owner (Depositor 2)
+            await expect(escrowInstance.releaseFunds(1)).to.be.revertedWith("Ownable: caller is not the owner");
         });
 
-        it("Should revert if attempting to release an already released agreement", async function () {
-            // First, release successfully
-            await escrowInstance.releaseFunds(agreementId, true);
+        it("Should revert if attempting to release an already released fund", async function () {
+            const amountToSend = ethers.utils.parseEther("10");
+            
+            // Setup funding and initial release
+            await escrowInstance.deposit(depositor1.address, amountToSend);
+            await escrowInstance.releaseFunds(1);
 
-            // Second, attempt to release again
-            await expect(escrowInstance.releaseFunds(agreementId, true)).to.be.revertedWith("Agreement already released");
-        });
-
-        it("Should revert if attempting to release an invalid agreement ID", async function () {
-            await expect(escrowInstance.releaseFunds(9999, true)).to.be.revertedWith("Invalid agreement ID");
+            // Attempt to release again
+            await expect(escrowInstance.releaseFunds(1)).to.be.revertedWith("Funds are already released");
         });
     });
 });

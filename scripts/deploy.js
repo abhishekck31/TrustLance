@@ -1,8 +1,8 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Deploy the Escrow contract
   const Escrow = await hre.ethers.getContractFactory("Escrow");
+  // Deploy with no constructor arguments, assuming Ownable handles ownership initialization
   const escrow = await Escrow.deploy();
 
   await escrow.deployed();
@@ -11,8 +11,7 @@ async function main() {
 }
 
 main()
-  .then(() => process.exit(0))
-  .catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
+.catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

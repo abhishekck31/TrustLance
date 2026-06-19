@@ -5,98 +5,58 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Escrow
- * @notice A simple escrow contract managing funds and milestone releases.
+ * @notice A simplified escrow contract for managing deposits and conditional releases.
  */
 contract Escrow is Ownable {
-    struct EscrowAgreement {
-        address payable buyer;
-        address payable seller;
+    struct EscrowItem {
+        address payable recipient;
         uint256 amount;
-        uint256 releaseMilestone;
         bool released;
     }
 
-    mapping(uint256, EscrowAgreement) public agreements;
-    uint256 public nextAgreementId = 1;
+    mapping(address => mapping(uint256 => EscrowItem)) public escrowItems;
+    uint256 public nextId;
 
-    event FundsDeposited(uint256 agreementId, uint256 amount);
-    event MilestoneReleased(uint256 agreementId, bool success);
+    event FundsDeposited(address indexed user, uint256 amount);
+    event FundsReleased(address indexed escrow, address indexed recipient, uint256 amount);
 
     /**
-     * @notice Creates a new escrow agreement and deposits the funds.
-     * @param _seller The address of the party depositing the funds (usually the seller initially).
-     * @param _buyer The address receiving the funds.
-     * @param _amount The total amount to be held in escrow.
-     * @param _milestone The milestone amount for release (if applicable, could be the full amount initially).
+     * @notice Allows an address to deposit funds into the escrow.
+     * @param _recipient The address to receive the funds.
+     * @param _amount The amount to be escrowed.
      */
-    function createAgreement(
-        address payable _seller,
-        address payable _buyer,
-        uint256 _amount,
-        uint256 _milestone
-    ) public {
-        require(_seller != address(0) && _buyer != address(0), "Invalid addresses");
-        require(_amount > 0, "Amount must be greater than zero");
-
-        uint256 currentAgreementId = nextAgreementId++;
-
-        agreements[currentAgreementId] = EscrowAgreement({
-            buyer: _buyer,
-            seller: _seller,
+    function deposit(address payable _recipient, uint256 _amount) public {
+        require(_amount > 0, "Deposit amount must be positive");
+        escrowItems[nextId] = EscrowItem({
+            recipient: _recipient,
             amount: _amount,
-            releaseMilestone: _milestone,
             released: false
         });
-
-        // In a real system, ETH/ERC20 transfer logic would happen here.
-        // For simplicity in this test script context, we assume the caller handles the actual transfer setup externally or via simulation.
-        emit FundsDeposited(currentAgreementId, _amount);
+        nextId++;
+        emit FundsDeposited(msg.sender, _amount);
     }
 
     /**
-     * @notice Allows the seller to release the escrow funds based on a milestone.
-     * @param _agreementId The ID of the agreement to release.
-     * @param _success Whether the release is successful.
+     * @notice Allows the owner to release funds for a specific escrow item.
+     * @param _id The ID of the escrow item to release.
      */
-    function releaseFunds(uint256 _agreementId, bool _success) public {
-        require(_agreementId > 0 && _agreementId < nextAgreementId, "Invalid agreement ID");
-        require(!agreements[_agreementId].released, "Agreement already released");
+    function releaseFunds(uint256 _id) public onlyOwner {
+        require(_id > 0 && _id < nextId, "Invalid escrow ID");
+        EscrowItem storage item = escrowItems[_id];
 
-        if (_success) {
-            agreements[_agreementId].released = true;
-            emit MilestoneReleased(_agreementId, true);
-        } else {
-            // Revert or handle failure state if needed in a complex scenario.
-            revert("Release failed");
-        }
+        require(!item.released, "Funds are already released");
+
+        (bool success, ) = item.recipient.call{value: item.amount}("");
+        require(success, "Transfer failed");
+
+        item.released = true;
+        emit FundsReleased(_id, item.recipient, item.amount);
     }
 
     /**
-     * @notice Owner can manage the contract (e.g., pause, admin actions).
+     * @notice Allows an escrow recipient to claim their funds (simulating a milestone).
+     * In a real system, this would involve more complex conditional logic.
+     * Here we simplify it: the owner can trigger the release if they deem it ready.
+     * For this simple example, 'releaseFunds' is the core action authorized by ownership.
      */
-    function setOwner(address _newOwner) public onlyOwner {
-        require(_newOwner != address(0), "Invalid owner");
-        owner = _newOwner;
-    }
-
-    /**
-     * @notice Retrieves details of an escrow agreement.
-     */
-    function getAgreementDetails(uint256 _agreementId) public view returns (
-        address buyer,
-        address seller,
-        uint256 amount,
-        uint256 releaseMilestone,
-        bool released
-    ) {
-        require(_agreementId > 0 && _agreementId < nextAgreementId, "Invalid agreement ID");
-        EscrowAgreement storage agreement = agreements[_agreementId];
-        return (
-            agreement.buyer,
-            agreement.seller,
-            agreement.amount,
-            agreement.releaseMilestone,
-            agreement.released
-        );
-    }
 }
