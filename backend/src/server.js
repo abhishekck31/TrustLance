@@ -1,62 +1,34 @@
-// Backend setup to handle data fetching and link generation.
+// Main entry point for the Node.js Express application, integrating routes.
+
 const express = require('express');
-const cors = require('cors');
+const dotenv = require('dotenv');
+const jobRoutes = require('./routes/jobRoutes');
+
+// Load environment variables
+dotenv.config();
+
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+// Middleware
+app.use(express.json()); // To parse JSON bodies
 
-/**
- * Mock function to simulate fetching block explorer data based on a transaction hash.
- * In a real application, this would call an external API (like Etherscan RPC) or an internal index.
- * @param txHash The transaction hash.
- * @returns A Block Explorer URL.
- */
-function getBlockExplorerUrl(txHash) {
-    // Simulating linking to Etherscan for demonstration
-    return `https://etherscan.io/tx/${txHash}`;
-}
-
-/**
- * Endpoint to fetch historical events and link them to block explorer URLs.
- * In a real scenario, this would query an indexed database or RPC service.
- */
-app.get('/api/events/history', async (req, res) => {
-    try {
-        // Mock data representing past contract events
-        const mockEvents = [
-            {
-                eventName: 'FundsTransferred',
-                blockNumber: 100000,
-                transactionHash: '0xabc123...', // Placeholder hash
-                from: '0xSenderA',
-                to: '0xReceiverB',
-                amount: 1000
-            },
-            {
-                eventName: 'EscrowReleased',
-                blockNumber: 100001,
-                transactionHash: '0xdef456...', // Placeholder hash
-                escrower: '0xContractAddress',
-                recipient: '0xFinalRecipient',
-                amount: 500
-            }
-        ];
-
-        const linkedEvents = mockEvents.map(event => ({
-            ...event,
-            blockExplorerUrl: getBlockExplorerUrl(event.transactionHash)
-        }));
-
-        res.json(linkedEvents);
-
-    } catch (error) {
-        console.error('Error fetching event history:', error);
-        res.status(500).json({ error: 'Failed to retrieve event history' });
-    }
+// Route Registration
+app.get('/', (req, res) => {
+    res.send('TrustLance Backend API is running.');
 });
 
+// Register Job Routes
+app.use('/api/job', jobRoutes);
+
+
+// Start Server
 app.listen(PORT, () => {
-    console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`✅ TrustLance Backend running on port ${PORT}`);
+    console.log("AI Job Scammer Evaluation Endpoint available at /api/job/analyze");
 });
+
+/* 
+Note: In a full production setup, this file would also handle database connections (Prisma) 
+and Redis integration for caching, but it is scoped here for API routing demonstration.
+*/
