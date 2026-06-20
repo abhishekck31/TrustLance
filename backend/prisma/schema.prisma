@@ -1,5 +1,4 @@
-// Prisma schema definition for the backend database (PostgreSQL).
-
+// Define the database structure for bookmarks and potential job listings relationship
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -11,30 +10,28 @@ generator client {
 
 model User {
   id        String   @id @default(cuid())
-  walletAddress String @unique
+  email     String   @unique
   name      String?
-  createdAt DateTime @default(now())
-  favorites SavedJob[]
+  bookmarks Bookmark[]
 }
 
 model Job {
   id          String    @id @default(cuid())
   title       String
-  description String
-  postedBy    String // Address of the user who posted it
+  description String?
   createdAt   DateTime  @default(now())
-  favorites   SavedJob[]
+  savedByIds  String[] // Links to User IDs who have saved this job (optional, for tracking popularity)
 }
 
-model SavedJob {
-  id            String   @id @default(cuid())
-  userId        String
-  jobId         String
-  isFavorite    Boolean  @default(false)
-  savedAt       DateTime @default(now())
+model Bookmark {
+  id        String    @id @default(cuid())
+  userId    String
+  jobId     String
+  jobTitle  String
+  savedAt   DateTime  @default(now())
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+  job       Job       @relation(fields: [jobId], references: [id])
 
-  user          User     @relation(fields: [userId], references: [id])
-  job           Job      @relation(fields: [jobId], references: [id])
-
-  @@unique([userId, jobId])
+  @@index([userId, jobId], unique: true) // Ensure a user only bookmarks a specific job once
 }

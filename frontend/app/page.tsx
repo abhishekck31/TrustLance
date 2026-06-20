@@ -1,135 +1,89 @@
-// Main marketplace landing page component
 'use client';
-
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useQuery } from '@tanstack/react-query';
-import { RainbowKitProvider, useRainbowKit } from '@rainbow-me/rainbowkit';
-import { WAGMI } from 'wagmi';
+import { RefreshCw, Plus } from 'lucide-react';
 
-// Define types based on backend/frontend communication
-interface Listing {
-    id: number;
-    title: string;
-    categoryName: string;
-    price: number;
-    sellerAddress: string;
-}
+// Assume Wallet Address is managed by Wagmi context (mocked here)
+const MOCK_USER_ADDRESS = "0xabc123..."; // Replace with actual chain interaction result
 
-export default function MarketplacePage() {
-    const [selectedCategory, setSelectedCategory] = useState('');
-    const [listings, setListings] = useState<Listing[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+export default function SavedJobsPage() {
+  const [bookmarks, setBookmarks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    // Mock/Placeholder for Web3 connection state (In a real app, this would be derived from Wagmi hooks)
-    const { address, isConnected } = useRainbowKit();
+  const fetchBookmarks = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // In a real application, the backend would authenticate the user session.
+      // Here we mock the call to our Node/Prisma backend.
+      const response = await axios.get(`http://localhost:3001/api/bookmarks?userId=${MOCK_USER_ADDRESS}`);
+      setBookmarks(response.data);
+    } catch (err) {
+      setError('Failed to fetch bookmarks.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const fetchListings = async (category: string) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await axios.get(`http://localhost:3000/listings/category/${category}`);
-            setListings(response.data);
-        } catch (err: any) {
-            setError(`Failed to fetch listings for ${category}. Check if the category exists.`);
-            console.error(err);
-            setListings([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    fetchBookmarks();
+  }, []);
 
-    useEffect(() => {
-        // Load default data on component mount
-        fetchListings('Design');
-    }, []);
+  const handleSave = async (jobId, title) => {
+    try {
+      const response = await axios.post('http://localhost:3001/api/bookmarks', {
+        userId: MOCK_USER_ADDRESS, // In production, this comes from the session
+        jobId: jobId,
+        jobTitle: title,
+      });
+      console.log('Bookmark saved successfully:', response.data);
+      // Refresh list or update state
+      fetchBookmarks();
+    } catch (err) {
+      setError(`Failed to save bookmark: ${err.response?.data?.error || 'Unknown error'}`);
+    }
+  };
 
-    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const category = e.target.value;
-        setSelectedCategory(category);
-        fetchListings(category);
-    };
+  if (loading) return <div className="p-8 text-center">Loading bookmarks...</div>;
 
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <header className="flex justify-between items-center mb-8 border-b pb-4">
+        <h1 className="text-3xl font-bold text-gray-900">My Saved Jobs</h1>
+        <button className="flex items-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition">
+          <Plus className="w-5 h-5 mr-2" /> Save New Job
+        </button>
+      </header>
 
-    return (
-        <RainbowKitProvider chains={[]} accounts={[]}>
-            <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-                <header className="max-w-6xl mx-auto mb-8 bg-white shadow-lg rounded-xl p-6">
-                    <h1 className="text-4xl font-extrabold text-indigo-700 border-b pb-3">TrustLance Marketplace</h1>
-                    <p className="text-gray-600 mt-2">Discover and trade digital assets across various categories.</p>
-                </header>
+      {error && <div className="p-3 bg-red-100 text-red-700 mb-4 rounded">{error}</div>}
 
-                <main className="max-w-6xl mx-auto">
-                    {/* Category Selector */}
-                    <div className="mb-8 flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
-                        <label htmlFor="category-select" className="text-lg font-medium text-gray-700">Filter by Category:</label>
-                        <select
-                            id="category-select"
-                            value={selectedCategory}
-                            onChange={handleCategoryChange}
-                            className="p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-                        >
-                            {/* Dynamically populate categories based on mock data or backend call */}
-                            <option value="" disabled>Select a Category</option>
-                            <option value="Design">Design</option>
-                            <option value="Dev">Dev</option>
-                            <option value="AI">AI</option>
-                            <option value="Marketing">Marketing</option>
-                        </select>
-                    </div>
-
-                    {/* Listings Display */}
-                    <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">
-                        Listings in {selectedCategory || 'Design'}
-                    </h2>
-
-                    {loading && (
-                        <div className="text-center py-10 text-indigo-600 font-semibold">Loading listings...</div>
-                    )}
-
-                    {error && (
-                        <div className="text-center py-10 text-red-600 bg-red-100 border border-red-400 rounded-lg mx-auto max-w-xl">{error}</div>
-                    )}
-
-                    {!loading && listings.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {listings.map((listing) => (
-                                <div key={listing.id} className="bg-white p-6 rounded-xl shadow-lg border border-indigo-100 transition duration-300 hover:shadow-xl">
-                                    <h3 className="text-xl font-semibold text-indigo-800 mb-2">{listing.title}</h3>
-                                    <p className="text-sm text-gray-500 mb-3 flex items-center">
-                                        <span className="bg-indigo-100 text-indigo-700 font-medium px-3 py-1 rounded-full text-xs">{listing.categoryName}</span>
-                                    </p>
-                                    <div className="flex justify-between items-center pt-2 border-t">
-                                        <p className="text-2xl font-bold text-green-600">${listing.price}</p>
-                                        <p className={`font-medium ${listing.status === 'sold' ? 'text-red-500' : 'text-gray-500'}`}>
-                                            Status: {listing.status.toUpperCase()}
-                                        </p>
-                                        {/* Placeholder for Web3 Action Button */}
-                                        <button
-                                            onClick={() => alert(`Attempting to buy listing ID: ${listing.id} for $${listing.price}`)}
-                                            className={`px-4 py-2 rounded-lg font-semibold transition ${
-                                                listing.status === 'active' ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-400 text-gray-100 cursor-not-allowed'
-                                            }`}
-                                            disabled={listing.status !== 'active'}
-                                        >
-                                            {listing.status === 'active' ? 'Buy Now' : 'Sold'}
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                     {!loading && listings.length === 0 && (
-                        <div className="text-center py-10 bg-white rounded-xl shadow-lg border border-gray-300">
-                            <p className="text-xl text-gray-500">No active listings found in this category yet.</p>
-                            <p className='mt-2 text-sm'>Try creating a new listing to start the marketplace!</p>
-                        </div>
-                    )}
-
-                </main>
+      {bookmarks.length === 0 ? (
+        <div className="text-center p-12 border-2 border-dashed border-gray-300 rounded-lg">
+          <p className="text-lg text-gray-600">You haven't saved any jobs yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bookmarks.map((bookmark) => (
+            <div key={bookmark.id} className="bg-white p-5 rounded-lg shadow border border-gray-200 flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">{bookmark.jobTitle}</h2>
+                <p className="text-sm text-gray-600 mt-1">Job ID: {bookmark.jobId}</p>
+              </div>
+              <div className="flex space-x-3">
+                <button 
+                  onClick={() => handleSave(bookmark.jobId, bookmark.jobTitle)}
+                  className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition text-sm"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" /> Resave
+                </button>
+                {/* Add a remove button here if the contract allowed direct removal */}
+              </div>
             </div>
-        </RainbowKitProvider>
-    );
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
