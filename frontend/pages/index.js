@@ -1,71 +1,92 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
-import { fetchProjectStatus } from '../utils/api'; // Assuming API utility exists
-import { Card, CardBody, Typography, Button, Container, CircularProgress, Alert } from '@mui/material';
+// Next.js Frontend component for the AI Escrow Assistant interface.
+import React, { useState } from 'react';
+import axios from 'axios';
 
-// Mocking the actual interaction setup (In a full app, this would be hooked up to Wagmi wallet)
-const mockProjectData = {
-    id: 101,
-    name: "TrustLance Initial PoW Project",
-    status: "Pending",
-    proofHash: "0xabc123xyz456",
-};
+export default function AiEscrowAssistant() {
+    const [contractAddress, setContractAddress] = useState('');
+    const [status, setStatus] = useState(null);
+    const [explanation, setExplanation] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-export default function HomePage() {
-    const queryClient = useQueryClient();
-    // In a real setup, we'd fetch actual blockchain data via the backend API
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['projectStatus', mockProjectData.id],
-        queryFn: () => fetchProjectStatus(mockProjectData.id), // Calls /api/project/:id/status
-        staleTime: 1000 * 60 * 5, // Data is considered fresh for 5 minutes
-    });
+    const API_URL = 'http://localhost:3000/api/contract-status/';
 
-    const { mutate: completeProject, isLoading: isCompleting } = useMutation({
-        mutationFn: (projectId, proofHash) => fetchProjectStatus(`${projectId}/complete`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ proofHash }) }), // Simplified to call the backend endpoint directly
-        onSuccess: (response) => {
-            alert(`Success! Project ${projectId} linked with PoW hash: ${response.proofHash}`);
-            queryClient.invalidateQueries(['projectStatus', projectId]);
-        },
-        onError: (error) => {
-            alert(`Error linking project: ${error.message}`);
+    const fetchStatus = async () => {
+        if (!contractAddress) {
+            setError("Please enter a contract address.");
+            return;
         }
-    });
+        setLoading(true);
+        setStatus(null);
+        setExplanation('');
+        setError(null);
 
+        try {
+            const response = await axios.get(`${API_URL}${contractAddress}`);
+            setStatus(response.data.status);
+            setExplanation(response.data.explanation);
+        } catch (err) {
+            console.error("API Error:", err);
+            setError("Error fetching data. Check if the address is valid and the backend server is running.");
+            setStatus(null);
+            setExplanation('');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <Container maxWidth="md" style={{ marginTop: '50px' }}>
-            <Card>
-                <CardBody>
-                    <Typography variant="h4" gutterBottom>Proof-of-Work NFT Project Tracker</Typography>
-                    <Typography variant="subtitle1" color="text.secondary">Demonstrating on-chain linkage for completed projects.</Typography>
+        <div className="min-h-screen bg-gray-50 p-8">
+            <header className="text-center mb-10">
+                <h1 className="text-4xl font-bold text-indigo-700">AI Escrow Assistant</h1>
+                <p className="text-lg text-gray-600 mt-2">Explain Contract Status Instantly</p>
+            </header>
 
-                    {/* Display Status */}
-                    <div style={{ border: '1px solid #ccc', padding: '15px', marginBottom: '20px' }}>
-                        <h3>Project Details (ID: {mockProjectData.id})</h3>
-                        <p><strong>Name:</strong> {mockProjectData.name}</p>
-                        <p><strong>Current Status:</strong> <span style={{ fontWeight: 'bold', color: mockProjectData.status === 'Completed' ? 'green' : 'orange' }}>{mockProjectData.status}</span></p>
-                        {mockProjectData.proofHash && (
-                            <>
-                                <p><strong>Proof Hash:</strong> {mockProjectData.proofHash}</p>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Action Button */}
-                    <Button 
-                        variant="contained" 
-                        color="primary" 
-                        onClick={() => completeProject(mockProjectData.id, '0xdeadbeef123456')} // Mocking the proof hash input
-                        disabled={isCompleting}
-                        sx={{ mt: 2 }}
+            <div className="max-w-3xl mx-auto bg-white p-8 shadow-xl rounded-lg border border-indigo-100">
+                <div className="mb-6 space-y-4">
+                    <label htmlFor="address" className="block text-lg font-medium text-gray-700">Contract Address:</label>
+                    <input
+                        id="address"
+                        type="text"
+                        value={contractAddress}
+                        onChange={(e) => setContractAddress(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter Ethereum Contract Address (e.g., 0x...)"
+                    />
+                    <button
+                        onClick={fetchStatus}
+                        disabled={loading}
+                        className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition duration-150 ${
+                            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md'
+                        }`}
                     >
-                        {isCompleting ? <CircularProgress size={24} /> : 'Submit PoW & Mint NFT Link'}
-                    </Button>
+                        {loading ? 'Analyzing Status...' : 'Get Contract Explanation'}
+                    </button>
+                </div>
 
-                    {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-                </CardBody>
-            </Card>
-        </Container>
+                {error && (
+                    <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg mb-6">
+                        Error: {error}
+                    </div>
+                )}
+
+                {status && (
+                    <div className="mt-8 p-6 bg-indigo-50 border-l-4 border-indigo-500 shadow-md rounded-lg">
+                        <h2 className="text-2xl font-bold text-indigo-800 mb-3">Status Overview</h2>
+                        <p className="text-gray-700 mb-4">Current State: <span className="font-semibold text-indigo-600">{status}</span></p>
+                        <h3 className="text-xl font-semibold text-gray-800 mt-4">AI Explanation:</h3>
+                        <div className="whitespace-pre-wrap text-gray-600 leading-relaxed border-t pt-3">
+                            {explanation}
+                        </div>
+                    </div>
+                )}
+
+                {!loading && !status && !error && (
+                     <div className="text-center p-8 bg-gray-100 rounded-lg border border-dashed border-gray-300">
+                        Enter an address above and click to get the contract explanation.
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
