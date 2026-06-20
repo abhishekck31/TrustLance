@@ -1,44 +1,65 @@
-// Backend setup using Express, connecting to a conceptual blockchain node client (e.g., Ethers.js/Web3.js) and Prisma for data persistence if needed, though here we focus on direct contract reading.
+// Main entry point for the Node.js/Express backend. Handles Web3 interaction.
 const express = require('express');
 const cors = require('cors');
+const { ethers } = require('ethers');
+
 const app = express();
-const port = 3001;
-
-// Mock function to simulate fetching data from the blockchain state (In a real app, this connects via Web3 provider)
-const fetchTreasuryData = async () => {
-    // In a real scenario, use web3.eth.call() or similar to read state from the deployed contract address.
-    console.log("Fetching blockchain treasury data...");
-    
-    // Mock Data Simulation for Dashboard Demo
-    return {
-        owner: "0xOwnerAddressMock",
-        holdings: {
-            "0xUserA": 100000,
-            "0xUserB": 50000,
-            "0xDAO_Vault": 5000000
-        },
-        flows: [
-            { from: "0xUserA", to: "0xDAO_Vault", amount: 10000, description: "Initial Deposit" },
-            { from: "0xDAO_Vault", to: "0xUserB", amount: 5000, description: "Distribution" }
-        ]
-    };
-};
-
+const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
 
-// API Endpoint for Dashboard Data
-app.get('/api/dashboard/treasury', async (req, res) => {
+let provider;
+let signer;
+
+// --- Web3 Connection Setup ---
+async function setupWeb3(providerInstance, signerInstance) {
+    provider = providerInstance;
+    signer = signerInstance;
+}
+
+// Endpoint to read allocation status from the blockchain
+app.get('/api/allocation/:id', async (req, res) => {
     try {
-        const data = await fetchTreasuryData();
-        res.json(data);
+        const { id } = req.params;
+        if (!id) return res.status(400).send({ error: "Allocation ID required" });
+
+        // Assume we are reading from a deployed contract address (e.g., the Treasury contract)
+        const treasuryAddress = "0xYOUR_TREASURY_ADDRESS"; // Placeholder! Replace this in production
+        const treasuryContract = new ethers.Contract(treasuryAddress, ["function getAllocationDetails(uint256) view returns (address,uint256,uint256,uint256,uint256,bool)"], signer);
+
+        const details = await treasuryContract.getAllocationDetails(parseInt(id));
+        res.json({ success: true, data: details });
     } catch (error) {
-        console.error("Error fetching treasury data:", error);
-        res.status(500).json({ error: "Failed to retrieve treasury data" });
+        console.error("Error fetching allocation details:", error);
+        res.status(500).json({ success: false, message: "Failed to retrieve data" });
     }
 });
 
-app.listen(port, () => {
-    console.log(`Backend API listening at http://localhost:${port}`);
+// Endpoint to submit a vote
+app.post('/api/vote', async (req, res) => {
+    try {
+        const { allocationId, voteFor } = req.body;
+        if (!allocationId || typeof voteFor === 'undefined') {
+            return res.status(400).json({ success: false, message: "Missing allocationId or voteFor" });
+        }
+
+        // Assume we are calling the GovernanceSystem contract for voting interaction
+        const governanceAddress = "0xYOUR_GOVERNANCE_ADDRESS"; // Placeholder!
+        const governanceContract = new ethers.Contract(governanceAddress, ["function callTreasury(uint256,bool)"], signer);
+
+        const tx = await governanceContract.callTreasury(parseInt(allocationId), voteFor);
+        await tx.wait(10); // Wait for transaction confirmation
+
+        res.json({ success: true, message: `Vote submitted successfully. Transaction Hash: ${tx.hash}` });
+
+    } catch (error) {
+        console.error("Error submitting vote:", error);
+        res.status(500).json({ success: false, message: "Failed to submit vote" });
+    }
+});
+
+
+app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
 });
