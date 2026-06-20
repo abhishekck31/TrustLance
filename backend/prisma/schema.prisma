@@ -1,4 +1,4 @@
-// Define the database structure for bookmarks and potential job listings relationship
+// Database schema definition for PostgreSQL persistence (optional, but good for tracking non-immutable metadata)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -9,29 +9,21 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  bookmarks Bookmark[]
+  id        String @id @default(cuid())
+  email     String @unique
+  walletAddress String @unique
+  // Links to on-chain data (optional, for index lookups)
+  onchainBadges Json? 
 }
 
-model Job {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  createdAt   DateTime  @default(now())
-  savedByIds  String[] // Links to User IDs who have saved this job (optional, for tracking popularity)
-}
+model SkillBadgeRecord {
+  id        String @id @default(cuid())
+  tokenId   String @unique
+  ownerAddress String
+  skillName  String
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
 
-model Bookmark {
-  id        String    @id @default(cuid())
-  userId    String
-  jobId     String
-  jobTitle  String
-  savedAt   DateTime  @default(now())
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id])
-  job       Job       @relation(fields: [jobId], references: [id])
-
-  @@index([userId, jobId], unique: true) // Ensure a user only bookmarks a specific job once
+  // Optional: Link to the raw contract data hash for external verification proofs
+  contractAddress String? 
 }

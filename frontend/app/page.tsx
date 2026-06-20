@@ -1,89 +1,119 @@
+// Next.js page displaying the ability to view and request skill badges.
 'use client';
+
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, Plus } from 'lucide-react';
+import { useAccount } from 'wagmi';
+import { useReadContract, useWaitForDataFetching } from 'wagmi';
+import { getContract } from '@/lib/contracts'; // Assume utility to connect to contracts via ethers/wagmi hooks
+import { apiFetch } from '@/lib/api'; // Assume utility for backend calls
 
-// Assume Wallet Address is managed by Wagmi context (mocked here)
-const MOCK_USER_ADDRESS = "0xabc123..."; // Replace with actual chain interaction result
+export default function SkillBadgeVerifier() {
+    const { address, isConnected } = useAccount();
+    const [badgeId, setBadgeId] = useState('');
+    const [skillName, setSkillName] = useState('');
+    const [status, setStatus] = useState('pending');
+    const [loading, setLoading] = useState(false);
 
-export default function SavedJobsPage() {
-  const [bookmarks, setBookmarks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+    // --- Mock On-Chain Data Fetching (Simulated via useReadContract) ---
+    // In a real scenario, this fetches data directly from the deployed contract.
+    const { data: badgeData, error: contractError } = useReadContract({
+        address: '0xSkillBadgeAddress', // Placeholder Contract Address
+        abi: [...], // Assume ABI is loaded
+        function getSkill(new Date()) // Mock call structure
+    });
 
-  const fetchBookmarks = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // In a real application, the backend would authenticate the user session.
-      // Here we mock the call to our Node/Prisma backend.
-      const response = await axios.get(`http://localhost:3001/api/bookmarks?userId=${MOCK_USER_ADDRESS}`);
-      setBookmarks(response.data);
-    } catch (err) {
-      setError('Failed to fetch bookmarks.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    // --- Backend Interaction (Verification Flow) ---
+    const handleVerify = async () => {
+        if (!badgeId || !skillName) return;
 
-  useEffect(() => {
-    fetchBookmarks();
-  }, []);
+        setLoading(true);
+        try {
+            const response = await apiFetch('/api/badges/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tokenId: badgeId, skillName: skillName, verifiedByHash: '0xproof...' })
+            });
 
-  const handleSave = async (jobId, title) => {
-    try {
-      const response = await axios.post('http://localhost:3001/api/bookmarks', {
-        userId: MOCK_USER_ADDRESS, // In production, this comes from the session
-        jobId: jobId,
-        jobTitle: title,
-      });
-      console.log('Bookmark saved successfully:', response.data);
-      // Refresh list or update state
-      fetchBookmarks();
-    } catch (err) {
-      setError(`Failed to save bookmark: ${err.response?.data?.error || 'Unknown error'}`);
-    }
-  };
+            if (response.status === 200) {
+                setStatus('success');
+                console.log("Verification successful:", response.data);
+            } else {
+                setStatus('error');
+                console.error("Verification failed:", response.data);
+            }
+        } catch (e) {
+            setStatus('error');
+            console.error("Network or API error:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  if (loading) return <div className="p-8 text-center">Loading bookmarks...</div>;
+    // --- Render Logic ---
+    return (
+        <div className="p-8 bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold text-indigo-700 mb-6 border-b pb-2">Verifiable Skill Badge System</h1>
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <header className="flex justify-between items-center mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">My Saved Jobs</h1>
-        <button className="flex items-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition">
-          <Plus className="w-5 h-5 mr-2" /> Save New Job
-        </button>
-      </header>
+            <div className="max-w-3xl mx-auto bg-white p-6 shadow-lg rounded-lg">
+                <h2 className="text-xl font-semibold mb-4 text-gray-800">Certify Your Skill</h2>
 
-      {error && <div className="p-3 bg-red-100 text-red-700 mb-4 rounded">{error}</div>}
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="tokenId" className="block text-sm font-medium text-gray-700">On-Chain Badge ID (e.g., 12345):</label>
+                        <input
+                            id="tokenId"
+                            type="text"
+                            value={badgeId}
+                            onChange={(e) => setBadgeId(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="skillName" className="block text-sm font-medium text-gray-700">Skill Certified:</label>
+                        <input
+                            id="skillName"
+                            type="text"
+                            value={skillName}
+                            onChange={(e) => setSkillName(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        />
+                    </div>
 
-      {bookmarks.length === 0 ? (
-        <div className="text-center p-12 border-2 border-dashed border-gray-300 rounded-lg">
-          <p className="text-lg text-gray-600">You haven't saved any jobs yet.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {bookmarks.map((bookmark) => (
-            <div key={bookmark.id} className="bg-white p-5 rounded-lg shadow border border-gray-200 flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">{bookmark.jobTitle}</h2>
-                <p className="text-sm text-gray-600 mt-1">Job ID: {bookmark.jobId}</p>
-              </div>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={() => handleSave(bookmark.jobId, bookmark.jobTitle)}
-                  className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition text-sm"
-                >
-                  <RefreshCw className="w-4 h-4 mr-1" /> Resave
-                </button>
-                {/* Add a remove button here if the contract allowed direct removal */}
-              </div>
+                    <button
+                        onClick={handleVerify}
+                        disabled={loading || !isConnected}
+                        className={`w-full py-2 px-4 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition duration-150 ${
+                            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+                        }`}
+                    >
+                        {loading ? 'Verifying...' : 'Request On-Chain Verification'}
+                    </button>
+
+                    {status === 'success' && (
+                         <div className="mt-4 p-3 bg-green-100 text-green-800 border border-green-400 rounded">
+                            ✅ Success! Your verification request has been sent to the backend for indexing. Check status later.
+                         </div>
+                    )}
+
+                    {status === 'error' && (
+                        <div className="mt-4 p-3 bg-red-100 text-red-800 border border-red-400 rounded">
+                            ❌ Error during verification: {status}
+                        </div>
+                    )}
+                </div>
+
+                 {/* Display Simulated On-Chain Status */}
+                 <div className="mt-8 pt-6 border-t">
+                    <h2 className="text-xl font-semibold mb-3 text-gray-800">Simulated Badge Status Check</h2>
+                     {badgeId && (
+                        <div>
+                            <p><strong>Badge ID:</strong> {badgeId}</p>
+                            <p><strong>Simulated Skill:</strong> Advanced Solidity Development</p>
+                            <p><strong>Verification Status:</strong> Pending / Verified (Depends on Backend Indexing)</p>
+                        </div>
+                    )}
+                 </div>
             </div>
-          ))}
         </div>
-      )}
-    </div>
-  );
+    );
 }
