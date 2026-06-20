@@ -1,27 +1,31 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model TreasuryHolding {
-  id          Int      @id @default(autoincrement())
-  address     String   @unique // Owner/DAO address
-  tokenSymbol String   // e.g., "ETH", "USDC"
-  balance     BigInt    // Amount held (using BigInt for precision)
-  timestamp   DateTime @default(now())
+generator client {
+  provider = "prisma-client-js"
 }
 
-model TreasuryFlow {
-  id           Int      @id @default(autoincrement())
-  fromAddress  String
-  toAddress    String
-  token        String   // The token involved in the flow (e.g., "ETH")
-  amount       BigInt
-  timestamp    DateTime @default(now())
+model Subscription {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  planId      String
+  startDate   DateTime
+  endDate     DateTime?
+  status      String // e.g., 'active', 'canceled', 'past_due'
+  monthlyPrice Float
+  createdAt   DateTime @default(now())
 }
 
-// Note: In a real application, these models would be populated by Web3 indexers or backend processing of contract events.
+model Payment {
+  id          String   @id @default(uuid())
+  subscriptionId String
+  amount      Float
+  date        DateTime
+  status      String // e.g., 'paid', 'failed'
+  transactionId String? @unique
+  createdAt   DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+}
