@@ -1,112 +1,63 @@
-// Next.js Frontend component for viewing and voting on allocations.
+// Next.js frontend component displaying the featured talent list.
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import axios from 'axios';
 import Head from 'next/head';
 
-const API_URL = 'http://localhost:3001/api'; // Backend endpoint
+const FEATURED_TALENTS_API = 'http://localhost:3001/api/talents'; // Link to mock backend
 
-export default function TreasuryAllocationVoting() {
-    const [allocations, setAllocations] = useState([]);
+export default function Home() {
+    const [talents, setTalents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [voteId, setVoteId] = useState('');
-    const [voteStatus, setVoteStatus] = useState(null);
 
-    // --- Data Fetching ---
     useEffect(() => {
-        const fetchAllocations = async () => {
+        const fetchTalents = async () => {
             try {
-                const response = await axios.get(`${API_URL}/allocation/1`); // Example fetching allocation ID 1
-                if (response.data.success) {
-                    setAllocations([response.data.data]);
-                } else {
-                     setError("Could not fetch data from backend.");
-                }
+                // Fetch all talents (In a real app, this would filter by isFeatured=true on the blockchain)
+                const response = await axios.get(`${FEATURED_TALENTS_API}/all`); // Mock endpoint assumption
+                setTalents(response.data);
             } catch (err) {
-                console.error("Frontend Fetch Error:", err);
-                setError("Failed to connect to the backend service or retrieve allocation data.");
+                console.error("Error fetching featured talents:", err);
+                setError("Failed to load featured talents.");
             } finally {
                 setLoading(false);
             }
         };
-        fetchAllocations();
+        fetchTalents();
     }, []);
 
-    // --- Voting Functionality ---
-    const handleVote = async () => {
-        if (!voteId) {
-            setError("Please enter an Allocation ID to vote on.");
-            return;
-        }
-
-        setVoteStatus("Submitting vote...");
-
-        try {
-            const response = await axios.post(`${API_URL}/vote`, {
-                allocationId: voteId,
-                voteFor: true // True for voting FOR the allocation
-            });
-            setVoteStatus(`Success! ${response.data.message}`);
-            console.log(response.data);
-        } catch (err) {
-            setError("Voting failed. Check console for details.");
-            console.error("Voting Error:", err.response ? err.response.data : err.message);
-        }
-    };
-
-    if (loading) return <div>Loading Treasury Data...</div>;
-    if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
+    if (loading) return <div className="p-8 text-center">Loading Featured Talent Data...</div>;
+    if (error) return <div className="p-8 text-center text-red-600">Error: {error}</div>;
 
     return (
-        <div className="p-8 max-w-4xl mx-auto bg-gray-50 min-h-screen">
+        <div className="min-h-screen bg-gray-50 p-8">
             <Head>
-                <title>TrustLance Treasury Voting</title>
+                <title>TrustLance - Featured Talent</title>
             </Head>
-            <h1 className="text-3xl font-bold mb-6 text-blue-700 border-b pb-2">Governance Treasury Allocation</h1>
+            <header className="text-center mb-10">
+                <h1 className="text-4xl font-bold text-indigo-700">Featured Talent Showcase</h1>
+                <p className="text-lg text-gray-600 mt-2">Premium visibility for the best talent.</p>
+            </header>
 
-            <div className="bg-white shadow p-6 rounded-lg mb-8">
-                <h2 className="text-xl font-semibold mb-4">Vote on Allocation (Example ID: 1)</h2>
-                {allocations.length > 0 ? (
-                    <div>
-                        <p className="mb-3">Allocation Details (ID: {allocations[0].id}):</p>
-                        <p>Recipient: {allocations[0].recipient}</p>
-                        <p>Amount: {ethers.utils.formatUnits(allocations[0].amount, 18)}</p>
-                        <p>Voting Deadline (Timestamp): {new Date(allocations[0].votingDeadline * 1000).toLocaleString()}</p>
-                        <p>Current Votes For: {allocations[0].votesFor}</p>
-                        <p>Current Votes Against: {allocations[0].votesAgainst}</p>
-                        <p className={`mt-4 p-3 rounded ${allocations[0].isAllocated ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                            Status: {allocations[0].isAllocated ? "Finalized" : "Voting Open"}
-                        </p>
-
-                        {/* Voting Interface */}
-                        <div className="mt-6">
-                            <label htmlFor="voteId" className="block text-lg font-medium mb-2">Allocation ID to Vote For:</label>
-                            <input
-                                id="voteId"
-                                type="number"
-                                className="w-full md:w-1/2 p-3 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter Allocation ID"
-                            />
-                            <button
-                                onClick={() => setVoteId(document.getElementById('voteId').value)}
-                                className="mt-4 px-6 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition"
-                            >
-                                Select & Proceed to Vote
-                            </button>
-
-                            {voteStatus && (
-                                <div className={`mt-4 p-3 border ${voteStatus.startsWith('Success') ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
-                                    {voteStatus}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+            <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-6">
+                {talents.length === 0 ? (
+                    <p className="text-center text-gray-500">No featured talents are currently available.</p>
                 ) : (
-                    <p>No allocations found to display.</p>
+                    <ul className="space-y-4">
+                        {talents.map((talent) => (
+                            <li key={talent.id} className={`p-4 border rounded-md transition duration-300 ${talent.isFeatured ? 'bg-yellow-50 border-l-4 border-yellow-500' : 'bg-gray-50 border-l-4 border-gray-200'}`}>
+                                <div className="flex justify-between items-start">
+                                    <h2 className="text-xl font-semibold text-gray-800">{talent.name}</h2>
+                                    {talent.isFeatured && (
+                                        <span className="inline-block bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded-full">FEATURED</span>
+                                    )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-1">ID: {talent.id}</p>
+                            </li>
+                        ))}
+                    </ul>
                 )}
             </div>
-
         </div>
     );
 }
