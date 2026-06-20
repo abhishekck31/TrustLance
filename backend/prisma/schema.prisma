@@ -1,24 +1,17 @@
-// Example Prisma Schema for tracking vote results and juror data (PostgreSQL)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-generator"
+  provider = "prisma-client-js"
 }
 
-model Proposal {
-  id    Int     @id @default(autoincrement())
-  name  String
-  result Int
-  votes SubmittedVotes []Vote
+model RevenueRecord {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  amount    Float    // The actual revenue generated for this period/event
+  source    String   // e.g., 'Protocol_A', 'NFT_Sale'
 }
 
-model Vote {
-  id          Int      @id @default(autoincrement())
-  proposalId  Int
-  jurorAddress String // Storing address as string for simplicity in PG setup if not using custom type
-  voteAmount  Int
-  createdAt   DateTime @default(now())
-}
+// Ensure the schema supports time-series data necessary for forecasting.
