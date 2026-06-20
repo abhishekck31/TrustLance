@@ -1,0 +1,23 @@
+// This file will be referenced by the service worker and the main HTML to install the PWA.
+// Note: In a standard Next.js setup, if you are not using a specific PWA plugin, this configuration is static.
+{
+  "name": "TrustLance",
+  "short_name": "TrustLance",
+  "description": "A decentralized application for trust and lending.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
