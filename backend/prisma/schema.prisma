@@ -1,4 +1,3 @@
-// backend/prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,21 +7,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model ReputationRecord {
-  id          String   @id @default(cuid())
-  address     String   // The address involved (e.g., the user)
-  timestamp   DateTime
-  source      String   // e.g., "Transaction", "Approval"
-  change      Int      // Delta applied to the score
-  counterparty String // Address of the counterparty
-}
+// Model to represent the Project NFT linkage and PoW state in the database
+model Project {
+  id            Int      @id @default(autoincrement())
+  projectId     String   @unique // Corresponds to the Blockchain Project ID
+  name          String
+  status        String   @default("Pending") // Pending, Completed
+  proofHash     String?  // The hash linked to the on-chain PoW proof
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-model TrustScore {
-  id          String   @id @default(cuid())
-  address     String   @unique // The address whose score is tracked
-  currentScore Int      // The current calculated composite trust score
-  lastUpdated DateTime @updatedAt
-  records     ReputationRecord[]
+  @@map("projects")
 }
-
-// This setup assumes the backend manages the complex, materialized view of scores.
