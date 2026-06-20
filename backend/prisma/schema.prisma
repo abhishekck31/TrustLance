@@ -7,18 +7,16 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model DisputeEvidence {
-  id             Int      @id @default(autoincrement())
-  title          String
-  submissionData String   // The raw text or data submitted
-  evidencePath   String?   // Path to stored evidence (simulated)
-  analysisResult String?   // The AI summary generated
-  createdAt      DateTime @default(now())
-}
+model Activity {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  date        DateTime
+  type       String // e.g., 'Deployment', 'Feature Release', 'Audit'
+  details     String?
+  createdAt   DateTime @default(now())
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  createdAt DateTime @default(now())
+  // Optional: Link to an optional user if permissions matter
+  // userId     Int?
+  // user        User? @relation(fields: [userId], references: [id])
 }
