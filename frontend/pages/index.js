@@ -1,92 +1,151 @@
-// Next.js Frontend component for the AI Escrow Assistant interface.
-import React, { useState } from 'react';
-import axios from 'axios';
+// Next.js frontend component using React hooks to manage state and establish the WebSocket connection for real-time updates.
+import React, { useState, useEffect, useCallback } from 'react';
+import { useWagmi } from 'wagmi';
+import { createConfig, publicClient, mainnet } from 'wagmi/core';
+import { connectWallet } from 'wagmi/connect';
 
-export default function AiEscrowAssistant() {
-    const [contractAddress, setContractAddress] = useState('');
-    const [status, setStatus] = useState(null);
-    const [explanation, setExplanation] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+const NotificationCenter = () => {
+    const { address, isConnected } = useWagmi();
+    const [notifications, setNotifications] = useState([]);
+    const [status, setStatus] = useState('Disconnected');
 
-    const API_URL = 'http://localhost:3000/api/contract-status/';
+    // Initialize connection state when wallet connects
+    const handleConnectWallet = useCallback(async () => {
+        if (isConnected) return;
+        try {
+            const { address: walletAddress } = await connectWallet();
+            console.log("Wallet connected:", walletAddress);
+            setStatus('Connected');
+            // In a real app, subscribe to WebSocket here upon connection
+        } catch (error) {
+            console.error("Wallet connection failed:", error);
+            setStatus('Connection Error');
+        }
+    }, [isConnected]);
 
-    const fetchStatus = async () => {
-        if (!contractAddress) {
-            setError("Please enter a contract address.");
+
+    // Real-time data fetching simulation (simulating WebSocket listener)
+    useEffect(() => {
+        let ws;
+        if (!address) return;
+
+        // In a real application, this URL points to the backend WebSocket endpoint
+        const socketUrl = `ws://localhost:3000`; 
+        setStatus('Connecting...');
+        ws = new WebSocket(socketUrl);
+
+        ws.onopen = () => {
+            console.log('WebSocket connected successfully.');
+            // Send subscription message upon successful connection
+            ws.send(JSON.stringify({ action: 'subscribe', topic: address }));
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'notification') {
+                console.log("Received real-time notification:", data.payload);
+                setNotifications(prev => [...prev, data.payload]);
+            } else if (data.type === 'subscribed') {
+                 console.log('Successfully subscribed to feed.');
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            setStatus('Real-time Error');
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket closed.');
+            setStatus('Disconnected - Lost connection');
+        };
+
+        // Cleanup function
+        return () => {
+            if (ws) ws.close();
+        };
+    }, [address]);
+
+
+    const handleTriggerNotification = async () => {
+        if (!address) {
+            alert("Please connect a wallet first.");
             return;
         }
-        setLoading(true);
-        setStatus(null);
-        setExplanation('');
-        setError(null);
-
-        try {
-            const response = await axios.get(`${API_URL}${contractAddress}`);
-            setStatus(response.data.status);
-            setExplanation(response.data.explanation);
-        } catch (err) {
-            console.error("API Error:", err);
-            setError("Error fetching data. Check if the address is valid and the backend server is running.");
-            setStatus(null);
-            setExplanation('');
-        } finally {
-            setLoading(false);
+        const message = prompt("Enter the notification message:");
+        if (message) {
+             try {
+                const response = await fetch('http://localhost:3000/api/trigger-notification', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ recipientAddress: address, message: message })
+                });
+                const result = await response.json();
+                console.log("Notification triggered successfully:", result);
+            } catch (error) {
+                console.error("Error triggering notification:", error);
+                alert("Failed to trigger notification via backend.");
+            }
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <header className="text-center mb-10">
-                <h1 className="text-4xl font-bold text-indigo-700">AI Escrow Assistant</h1>
-                <p className="text-lg text-gray-600 mt-2">Explain Contract Status Instantly</p>
-            </header>
+        <div className="p-6 bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold text-indigo-800 mb-6">TrustLance Notification Center</h1>
+            
+            <div className="flex items-center space-x-4 mb-6 p-4 bg-white shadow rounded-lg">
+                <div>
+                    {isConnected ? (
+                        <p className="text-lg font-semibold text-green-600">Connected Wallet: {address}</p>
+                    ) : (
+                        <button 
+                            onClick={handleConnectWallet}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
+                        >
+                            Connect Wallet
+                        </button>
+                    )}
+                </div>
+            </div>
 
-            <div className="max-w-3xl mx-auto bg-white p-8 shadow-xl rounded-lg border border-indigo-100">
-                <div className="mb-6 space-y-4">
-                    <label htmlFor="address" className="block text-lg font-medium text-gray-700">Contract Address:</label>
-                    <input
-                        id="address"
-                        type="text"
-                        value={contractAddress}
-                        onChange={(e) => setContractAddress(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Enter Ethereum Contract Address (e.g., 0x...)"
-                    />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Notification Trigger Panel */}
+                <div className="lg:col-span-1 bg-white p-6 shadow rounded-lg border border-indigo-200">
+                    <h2 className="text-xl font-semibold mb-4 text-indigo-700">Send Notification</h2>
+                    <textarea
+                        placeholder="Enter message to send..."
+                        className="w-full p-3 border rounded mb-4 focus:ring-indigo-500 focus:border-indigo-500"
+                        rows="4"
+                    ></textarea>
                     <button
-                        onClick={fetchStatus}
-                        disabled={loading}
-                        className={`w-full py-3 px-4 rounded-lg text-white font-semibold transition duration-150 ${
-                            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md'
-                        }`}
+                        onClick={handleTriggerNotification}
+                        disabled={!isConnected}
+                        className={`w-full py-2 px-4 rounded font-semibold transition ${isConnected ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                     >
-                        {loading ? 'Analyzing Status...' : 'Get Contract Explanation'}
+                        Trigger Notification
                     </button>
+                     <p className="mt-4 text-sm text-gray-600">Notifications are broadcasted via WebSocket.</p>
                 </div>
 
-                {error && (
-                    <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg mb-6">
-                        Error: {error}
-                    </div>
-                )}
-
-                {status && (
-                    <div className="mt-8 p-6 bg-indigo-50 border-l-4 border-indigo-500 shadow-md rounded-lg">
-                        <h2 className="text-2xl font-bold text-indigo-800 mb-3">Status Overview</h2>
-                        <p className="text-gray-700 mb-4">Current State: <span className="font-semibold text-indigo-600">{status}</span></p>
-                        <h3 className="text-xl font-semibold text-gray-800 mt-4">AI Explanation:</h3>
-                        <div className="whitespace-pre-wrap text-gray-600 leading-relaxed border-t pt-3">
-                            {explanation}
+                {/* Real-time Feed Panel */}
+                <div className="lg:col-span-2 bg-white p-6 shadow rounded-lg border border-indigo-200">
+                    <h2 className="text-xl font-semibold mb-4 text-indigo-700">Real-time Feed ({notifications.length})</h2>
+                    {notifications.length === 0 ? (
+                        <p className="text-gray-500 italic">No new notifications received yet.</p>
+                    ) : (
+                        <div className="space-y-4">
+                            {notifications.slice().reverse().map((n, index) => (
+                                <div key={index} className={`p-3 border rounded-md ${n.status === 'new' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
+                                    <p className="font-medium text-sm">{n.message}</p>
+                                    <p className="text-xs mt-1 text-gray-600">Received at: {new Date(n.timestamp).toLocaleString()}</p>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-                )}
-
-                {!loading && !status && !error && (
-                     <div className="text-center p-8 bg-gray-100 rounded-lg border border-dashed border-gray-300">
-                        Enter an address above and click to get the contract explanation.
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
-}
+};
+
+export default NotificationCenter;

@@ -1,103 +1,86 @@
-// Main Node.js server handling API requests, connecting to Prisma and Redis.
+// Main entry point for the Node.js/Express/WebSocket server.
 const express = require('express');
+const http = require('http');
+const { WebSocketServer } = require('ws');
 const { PrismaClient } = require('@prisma/client');
-const redis = require('redis').createClient();
-const app = express();
-const port = 3001;
 
-// Initialize clients
+const app = express();
+const server = http.createServer(app);
 const prisma = new PrismaClient();
-redis.connect().catch(console.error);
+
+// --- Real-time Setup (Redis Pub/Sub Simulation) ---
+const wss = new WebSocketServer({ server: server });
+
+// Simulate a channel for notifications broadcast via Redis/WebSocket
+const notificationChannel = new Map(); // Simple in-memory store for demonstration purposes
 
 app.use(express.json());
 
-// --- Skill Badge API Endpoints ---
+// Real-time WebSocket handler
+wss.on('connection', (ws) => {
+    console.log('Client connected to real-time channel.');
+    
+    // In a production system, subscriptions would be managed here based on user ID or contract address.
 
-/**
- * Endpoint to register an off-chain verification proof for an on-chain badge ID.
- * This bridges the world of external skill assessment to the blockchain record.
- * POST /api/badges/verify
- * Body: { tokenId: "...", skillName: "...", verifiedByHash: "..." }
- */
-app.post('/api/badges/verify', async (req, res) => {
-    const { tokenId, skillName, verifiedByHash } = req.body;
-
-    if (!tokenId || !skillName || !verifiedByHash) {
-        return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    try {
-        // 1. Check if the badge exists on-chain (Simulated check, in a real app this would involve RPC calls)
-        // For demonstration, we rely on Prisma for tracking *recorded* verification events.
-
-        // 2. Record the off-chain proof linking to the ID
-        const newRecord = await prisma.SkillBadgeRecord.create({
-            data: {
-                tokenId: tokenId,
-                skillName: skillName,
-                isVerified: true, // Assume external hash validation passed for this demo
-                contractAddress: "0x...", // Placeholder for actual contract address reference
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            // Handle client requests (e.g., subscribing to new notifications)
+            if (data.action === 'subscribe') {
+                // Simulate subscribing the client to a specific notification feed
+                console.log(`Client subscribed to feed: ${data.topic}`);
+                ws.send(JSON.stringify({ type: 'subscribed', topic: data.topic }));
             }
-        });
+        } catch (e) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid request' }));
+        }
+    });
 
-        // 3. Update cache (Redis)
-        await redis.set(`badge:${tokenId}:status`, 'verified');
-
-        res.status(200).json({ message: "Skill badge successfully recorded and verified.", recordId: newRecord.id });
-
-    } catch (error) {
-        console.error("Verification Error:", error);
-        res.status(500).json({ error: "Failed to process verification" });
-    }
+    ws.on('close', () => {
+        console.log('Client disconnected.');
+    });
 });
 
 
-/**
- * Endpoint to fetch details of a specific skill badge.
- * GET /api/badges/:tokenId
- */
-app.get('/api/badges/:tokenId', async (req, res) => {
-    const { tokenId } = req.params;
+// --- Notification Trigger Simulation (Backend Logic) ---
+app.post('/api/trigger-notification', async (req, res) => {
+    const { recipientAddress, message } = req.body;
 
-    try {
-        // 1. Fetch the on-chain mapping (Simulated - requires RPC call in reality)
-        // Simulated fetch from a contract layer: Assume Token ID 1 exists and maps to 'Advanced Solidity'
-        let skillName = "Unknown Skill";
-        let isVerified = false;
-
-        if (tokenId === "12345") { // Example token check
-            skillName = "Advanced Solidity Development";
-            isVerified = true;
-        } else if (tokenId === "67890") {
-            skillName = "Web3 Backend Integration";
-            isVerified = false;
-        }
-
-        // 2. Fetch the off-chain recorded verification status
-        const record = await prisma.SkillBadgeRecord.findUnique({
-            where: { tokenId: tokenId },
-            select: { isVerified: true }
-        });
-
-
-        if (!record) {
-            return res.status(404).json({ error: "Badge not found in the system." });
-        }
-
-        res.status(200).json({
-            tokenId: tokenId,
-            skill: skillName,
-            isVerified: record.isVerified,
-            recordId: record.id
-        });
-
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        res.status(500).json({ error: "Failed to fetch badge details" });
+    if (!recipientAddress || !message) {
+        return res.status(400).json({ error: 'Missing fields' });
     }
+
+    // 1. Log to Database (Prisma)
+    const newNotification = await prisma.notification.create({
+        data: {
+            recipient: recipientAddress,
+            message: message,
+        },
+    });
+
+    // 2. Simulate Real-time Broadcast (Redis Pub/Sub or direct WebSocket push)
+    const notificationPayload = {
+        id: newNotification.id,
+        recipient: recipientAddress,
+        message: newNotification.message,
+        timestamp: newNotification.timestamp,
+        status: 'new'
+    };
+
+    // Simulate pushing this data to all subscribed WebSocket clients
+    notificationChannel.forEach(ws => {
+        // In a real system, we would check if the connected client is interested in this specific recipientAddress.
+        if (ws.readyState === 1) { // OPEN
+             ws.send(JSON.stringify({ type: 'notification', payload: notificationPayload }));
+        }
+    });
+
+    console.log(`Notification triggered and broadcasted for recipient: ${recipientAddress}`);
+    res.status(200).json({ status: 'success', notificationId: newNotification.id });
 });
 
 
-app.listen(port, () => {
-    console.log(`TrustLance Backend listening at http://localhost:${port}`);
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log(`Backend Notification Server running on port ${PORT}`);
 });

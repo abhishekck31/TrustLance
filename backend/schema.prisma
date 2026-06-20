@@ -1,4 +1,4 @@
-// Define the database schema using Prisma for PostgreSQL persistence of job metadata.
+// Define the database schema using Prisma for persistent storage (for tracking notifications if needed).
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,11 +8,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Job {
-  jobId        Int      @id @default(autoincrement())
-  status       String   @default("PENDING") // PENDING, FUNDED, COMPLETED, FAILED
-  description  String
-  amount       BigInt    // Use BigInt for precise monetary amounts
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+model Notification {
+  id          Int      @id @default(autoincrement())
+  recipient  String
+  message    String
+  timestamp   DateTime @default(now())
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 }
+
+// Redis setup simulation (Prisma handles DB, but we assume Redis is used for the real-time channel)
+// Note: In a real implementation, Redis connectivity would be handled via specific libraries.
