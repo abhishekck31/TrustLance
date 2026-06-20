@@ -1,121 +1,80 @@
-'use client';
-
+// Next.js page to display a user's reputation score. Uses Wagmi/RainbowKit context implicitly for connection.
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api'; // Assume this is configured to point to /api
-import { Badge } from '@/types'; // Define the expected type structure
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useAccount } from 'wagmi';
+import { useReadContract } from 'wagmi';
+import { formatUnits } from 'viem';
 
-export default function HomePage() {
-    const [badges, setBadges] = useState<Badge[]>([]);
+// NOTE: In a real app, Wallet connection and contract addresses must be configured via environment variables.
+const REPUTATION_CONTRACT_ADDRESS = "0xYourReputationContractAddress"; // Placeholder
+const REPUTATION_READ_FUNCTION = "getReputation"; // Function to call on-chain
+
+export default function ReputationDashboard() {
+    const { address, isConnected } = useAccount();
+    const [reputationScore, setReputationScore] = useState<string>('Loading...');
     const [loading, setLoading] = useState(true);
-    const [verificationStatus, setVerificationStatus] = useState<{ tokenId: number, status: string }[]>([]);
-    const [currentTokenId, setCurrentTokenId] = useState<number | null>(null);
+    const [error, setError] = useState<string>('');
 
     useEffect(() => {
-        const fetchBadges = async () => {
+        if (!isConnected) {
+            setError("Wallet not connected. Cannot fetch reputation.");
+            setLoading(false);
+            return;
+        }
+
+        const fetchReputation = async () => {
             try {
-                // Fetch all available badges (mocking data structure based on backend design)
-                const response = await fetch('/api/badges/101'); // Fetch specific badge for demonstration
-                if (response.ok) {
-                    setBadges([{ ...response.json(), isVerified: false }]);
+                // Use useReadContract hook for direct on-chain reading (best practice with Wagmi)
+                const { data, error } = await useReadContract({
+                    address: REPUTATION_CONTRACT_ADDRESS,
+                    abi: [/* ABI of Reputation.sol */], // Must be provided
+                    functionName: REPUTATION_READ_FUNCTION,
+                    args: [address],
+                });
+
+                if (error) {
+                    throw new Error(error.message || "Failed to read reputation from contract.");
                 }
-            } catch (error) {
-                console.error("Error fetching badges:", error);
+
+                if (data !== null) {
+                    // Assuming the Solidity returns a uint256 score, we convert it for display
+                    setReputationScore(data.toString()); 
+                } else {
+                    setReputationScore("N/A");
+                }
+
+            } catch (err) {
+                setError(`Error: ${err.message}`);
+                console.error(err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchBadges();
-    }, []);
 
-    const handleVerify = async () => {
-        if (!currentTokenId) return;
-
-        const ownerAddress = '0x1234567890abcdef'; // Mock user address for verification test
-
-        try {
-            const response = await fetch('/api/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tokenId: currentTokenId, ownerAddress: ownerAddress })
-            });
-
-            const data = await response.json();
-            setVerificationStatus(prev => [...prev, { tokenId: currentTokenId, status: data.message }]);
-
-        } catch (error) {
-            console.error("Verification failed:", error);
-            setVerificationStatus(prev => [...prev, { tokenId: currentTokenId, status: 'Error during verification' }]);
-        }
-    };
+        fetchReputation();
+    }, [isConnected, address]); // Re-run when connection status changes
 
 
-    if (loading) return <div className="p-8 text-center">Loading skill badges...</div>;
+    if (loading) return <div className="p-8 text-center">Loading Reputation Data...</div>;
+    if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6 sm:p-10">
-            <header className="mb-8 border-b pb-4">
-                <h1 className="text-4xl font-bold text-gray-900">Verifiable Skill Badges</h1>
-                <p className="text-gray-600 mt-2">On-chain certifications for verifiable skills.</p>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {badges.map((badge) => (
-                    <Card key={badge.tokenId} className={`shadow-lg transition duration-300 ${badge.isVerified ? 'border-green-500 bg-white' : 'border-gray-300 bg-white'}`}>
-                        <CardHeader>
-                            <CardTitle className="text-xl font-semibold text-indigo-600">{badge.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-gray-600 mb-4">{badge.description}</p>
-                            {!badge.isVerified ? (
-                                <Button onClick={() => setCurrentTokenId(badge.tokenId)} className="w-full bg-indigo-600 hover:bg-indigo-700">
-                                    Claim & Verify (ID: {badge.tokenId})
-                                </Button>
-                            ) : (
-                                <div className="flex items-center mt-4">
-                                    <span className="text-green-600 font-medium mr-2">Verified!</span>
-                                    <p className="text-sm text-green-700">Certificate is verified on-chain.</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                ))}
-
-                {/* Verification Status Section */}
-                <div className="md:col-span-2 lg:col-span-3 mt-10 p-6 border border-indigo-300 rounded-lg bg-indigo-50">
-                    <h2 className="text-2xl font-bold text-indigo-800 mb-4">Verification Portal</h2>
-                    {currentTokenId && (
-                        <>
-                            <p className="mb-4">Attempting to verify Badge ID: {currentTokenId}</p>
-                            <Button onClick={handleVerify} className="w-full bg-red-600 hover:bg-red-700 text-white">
-                                Start On-Chain Verification
-                            </Button>
-                            {verificationStatus.length > 0 && (
-                                <div className="mt-6 space-y-3">
-                                    {verificationStatus.map((status, index) => (
-                                        <div key={index} className={`p-3 rounded-md border ${status.verified ? 'bg-green-100 border-green-500' : 'bg-yellow-100 border-yellow-500'}`}>
-                                            <p className="font-semibold">Status for Token {status.tokenId}:</p>
-                                            <p>{status.status}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
+        <div className="p-10 max-w-4xl mx-auto bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold mb-6 text-indigo-700">TrustLance Reputation Score</h1>
+            
+            <div className="bg-white shadow-xl rounded-lg p-6 border border-indigo-200">
+                <p className="text-lg mb-4 text-gray-600">Your Current Reputation:</p>
+                <div className="text-center py-10">
+                    <span className={`text-7xl font-extrabold ${reputationScore === 'N/A' ? 'text-gray-400' : 'text-indigo-600'}`}>
+                        {reputationScore}
+                    </span>
                 </div>
+                <p className="mt-4 text-sm text-gray-500">Score reflects on-chain data, subject to the Reputation Decay Model.</p>
+            </div>
+
+            <div className="mt-8 p-6 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded">
+                <h3 className="font-semibold mb-2">Decay Model Note</h3>
+                <p>The score is dynamically adjusted via the `applyDecay` function based on time elapsed since the last recorded update, utilizing a configured decay rate defined in the contract.</p>
             </div>
         </div>
     );
 }
-
-
-// --- Mock Type Definition (Simulating type inference for demonstration) ---
-interface Badge {
-    tokenId: number;
-    name: string;
-    description: string;
-    isVerified: boolean;
-}
-
-// Note: In a real Next.js setup, the fetch calls would need to be managed within Server Actions or dedicated API routes if they were not mocked client-side.
