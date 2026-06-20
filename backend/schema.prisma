@@ -1,4 +1,4 @@
-// Updating the database schema to include talent information and featured status.
+// Define the database schema using Prisma for PostgreSQL persistence of job metadata.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,11 +8,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Talent {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String
-  isFeatured  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model Job {
+  jobId        Int      @id @default(autoincrement())
+  status       String   @default("PENDING") // PENDING, FUNDED, COMPLETED, FAILED
+  description  String
+  amount       BigInt    // Use BigInt for precise monetary amounts
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
