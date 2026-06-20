@@ -1,119 +1,92 @@
-// Basic Express server setup for administrative endpoints.
-import express from 'express';
-import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
-import { ethers } from 'ethers';
-
-dotenv.config();
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+const redisClient = require('./redisClient'); // Assume this connects to Redis
+const db = new PrismaClient();
 
 const app = express();
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3001;
+const PORT = 3000;
 
-// Middleware
 app.use(express.json());
 
-// --- Mock Web3 Interaction Layer ---
-// In a real setup, this would connect to an RPC provider (e.g., Alchemy/Infura)
-let mockContractInstance = null;
-
-/**
- * Simulates fetching the current fee from the blockchain.
- */
-async function fetchOnChainFee() {
-    try {
-        // Placeholder: In a live scenario, use ethers.js to read from the deployed contract address.
-        console.log("Simulating fetching on-chain data...");
-        return 100; // Mock value based on backend data synchronization expectation
-    } catch (error) {
-        console.error("Error reading mock blockchain data:", error);
-        return null;
-    }
+// --- Mock Database/State Management (In a real system, this would be interaction with a blockchain indexer or direct contract calls) ---
+async function mockFetchJurorData() {
+    // Simulate fetching data that needs payout processing
+    return [
+        { id: 1, jurorAddress: '0xabc...', awarded: 500 },
+        { id: 2, jurorAddress: '0xdef...', awarded: 750 },
+    ];
 }
 
 /**
- * Simulates calling the contract to set a new fee.
+ * Automation Endpoint: Triggers the reward distribution process.
+ * In a production system, this endpoint would verify off-chain results and then trigger a transaction on-chain.
  */
-async function callSetFeeOnChain(newFeeBPS) {
-    if (!mockContractInstance) {
-        throw new Error("Contract instance is not initialized.");
+app.post('/api/payout/distribute/:jurorId', async (req, res) => {
+    const { jurorId } = req.params;
+    const { amountToDistribute } = req.body;
+
+    if (!jurorId || !amountToDistribute) {
+        return res.status(400).json({ error: "Missing jurorId or amount." });
     }
-    console.log(`Simulating transaction: Calling setFee(${newFeeBPS}) on chain.`);
-    // Real implementation would use: await mockContractInstance.setFee(newFeeBPS);
-    return true;
+
+    try {
+        // 1. Authorization Check (Mocked security layer)
+        // In production, check JWT/API key permissions here.
+
+        // 2. Verification (Mocking validation step where off-chain data is confirmed)
+        const mockJuror = await mockFetchJurorData().find(j => j.id === parseInt(jurorId));
+        if (!mockJuror) {
+            return res.status(404).json({ error: `Juror ID ${jurorId} not found.` });
+        }
+
+        // 3. Trigger On-Chain Distribution (This is the automation step)
+        // In a real scenario, this would involve signing and sending a transaction to the JurorRewards contract.
+        console.log(`[AUTOMATION] Initiating reward distribution for Juror ID ${jurorId}: Amount ${amountToDistribute}`);
+
+        // --- SIMULATION OF CHAIN INTERACTION ---
+        // const tx = await provider.sendTransaction({to: '0xContractAddress', data: 'distributeReward(...)', gas: ...});
+        
+        res.status(200).json({ 
+            message: `Successfully triggered payout request for Juror ID ${jurorId}. Check blockchain for execution.`,
+            status: 'PENDING_BLOCKCHAIN_EXECUTION'
+        });
+
+    } catch (error) {
+        console.error("Payout Automation Error:", error);
+        res.status(500).json({ error: "Failed to automate reward distribution.", details: error.message });
+    }
+});
+
+
+// --- Example for Backend Health Check/Status ---
+app.get('/api/payout/status/:jurorId', async (req, res) => {
+     const { jurorId } = req.params;
+     try {
+         // Fetch status directly from blockchain via an indexer or direct RPC call
+         // Mocking the result based on the contract structure
+         const mockStatus = await db.query(`SELECT awardedAmount, hasClaimed FROM jurors WHERE id = $1`, [parseInt(jurorId)]);
+         if (mockStatus.length === 0) {
+             return res.status(404).json({ error: "Juror not found." });
+         }
+         res.json({ jurorId, ...mockStatus[0] });
+
+     } catch (error) {
+         res.status(500).json({ error: "Failed to fetch payout status." });
+     }
+});
+
+
+// Initialize Redis connection check (Placeholder for actual implementation)
+async function startServer() {
+    try {
+        await db.ping();
+        console.log("Database connected successfully.");
+        app.listen(PORT, () => {
+            console.log(`TrustLance Backend running on http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error("Database connection failed:", err);
+    }
 }
-// ------------------------------------
 
-
-// --- API Endpoints ---
-
-/**
- * GET /api/config - Fetch the platform configuration.
- */
-app.get('/api/config', async (req, res) => {
-    try {
-        const config = await prisma.platformConfig.findUnique({
-            where: { id: 1 }, // Assuming ID 1 for the main config
-        });
-
-        if (!config) {
-            return res.status(404).json({ error: "Configuration not found" });
-        }
-
-        // Simulate fetching potentially updated state from the blockchain for display
-        const onChainFee = await fetchOnChainFee();
-        res.json({
-            backendConfig: config,
-            onChainFeeBPS: onChainFee // Displaying the synchronized state
-        });
-
-    } catch (error) {
-        console.error("Error fetching config:", error);
-        res.status(500).json({ error: "Failed to retrieve configuration" });
-    }
-});
-
-
-/**
- * POST /api/update-fee - Endpoint to trigger a dynamic fee update transaction.
- */
-app.post('/api/update-fee', async (req, res) => {
-    const { newFeeBPS } = req.body;
-
-    if (!newFeeBPS || typeof newFeeBPS !== 'number') {
-        return res.status(400).json({ error: "Invalid input: newFeeBPS is required." });
-    }
-
-    try {
-        // 1. Trigger the on-chain transaction (Simulated)
-        const success = await callSetFeeOnChain(newFeeBPS);
-
-        if (!success) {
-             return res.status(500).json({ error: "Failed to execute blockchain transaction." });
-        }
-
-
-        // 2. Update the off-chain persistence (Prisma)
-        await prisma.platformConfig.update({
-            where: { id: 1 },
-            data: {
-                feeBPS: newFeeBPS,
-                updatedAt: new Date(),
-            }
-        });
-
-        res.status(200).json({
-            message: "Fee successfully updated and reflected on-chain.",
-            newFeeBPS: newFeeBPS
-        });
-
-    } catch (error) {
-        console.error("Error updating fee:", error);
-        res.status(500).json({ error: "Failed to update platform fee" });
-    }
-});
-
-
-app.listen(PORT, () => {
-    console.log(`Platform Fee Engine Backend running on http://localhost:${PORT}`);
-});
+startServer();
