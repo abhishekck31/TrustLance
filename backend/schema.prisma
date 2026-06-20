@@ -1,0 +1,21 @@
+// Prisma Schema for managing off-chain state related to payouts
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model JurorPayouts {
+  id             Int      @id @default(autoincrement())
+  jurorId        Uint256  @unique
+  status         String   @default("PENDING_PAYOUT") // PENDING_PAYOUT, PAID, FAILED
+  rewardAmount   BigInt    // Stored in the smallest denomination (e.g., wei) or native units
+  payoutWalletAddress String // The intended recipient address determined by backend logic
+  payoutDate     DateTime?
+  createdAt      DateTime @default(now())
+}
+
+// Note: In a complete system, we would also need models for rewards definitions and juror profiles.
