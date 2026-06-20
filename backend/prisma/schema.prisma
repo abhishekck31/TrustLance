@@ -1,27 +1,27 @@
-// Define the PostgreSQL schema for dynamic fee configuration.
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model TreasuryHolding {
+  id          Int      @id @default(autoincrement())
+  address     String   @unique // Owner/DAO address
+  tokenSymbol String   // e.g., "ETH", "USDC"
+  balance     BigInt    // Amount held (using BigInt for precision)
+  timestamp   DateTime @default(now())
 }
 
-model PlatformFeeConfig {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  feePercentage BigInt // Stored as basis points (e.g., 100 for 1%)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model TreasuryFlow {
+  id           Int      @id @default(autoincrement())
+  fromAddress  String
+  toAddress    String
+  token        String   // The token involved in the flow (e.g., "ETH")
+  amount       BigInt
+  timestamp    DateTime @default(now())
 }
 
-// Placeholder for potential token management if needed later
-model FeeRecord {
-  id          Int      @id @default(autoincrement())
-  configId    Int
-  amount      BigInt // Total amount involved
-  feeApplied  BigInt // Calculated fee amount
-  platformFee BigInt // The configured platform fee percentage
-}
+// Note: In a real application, these models would be populated by Web3 indexers or backend processing of contract events.

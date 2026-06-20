@@ -1,61 +1,49 @@
 import express from 'express';
-import dotenv from 'dotenv';
-import prisma from './prismaClient'; // Assuming prisma client is initialized
+import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import { BigInt } from 'bigint';
 
-dotenv.config();
-
+const prisma = new PrismaClient();
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 
-// Middleware
-app.use(cors({ origin: 'http://localhost:3000' })); // Allow frontend access
+app.use(cors());
 app.use(express.json());
 
-// --- Mock/Placeholder Data Setup (In a real app, this would be DB interactions) ---
-async function getMockFindings() {
-    // Simulate fetching data from the database
-    return [
-        { id: 'a1', title: 'Reentrancy Vulnerability in Token Transfer', description: 'Function X allows recursive calls leading to potential re-entry.', severity: 'Critical', status: 'Open', reportDate: new Date(), submittedBy: 'Alice', createdAt: new Date() },
-        { id: 'a2', title: 'Insufficient Role-Based Access Control (RBAC)', description: 'Admin roles can access sensitive configuration files.', severity: 'High', status: 'In Progress', reportDate: new Date(), submittedBy: 'Bob', createdAt: new Date() },
-        { id: 'a3', title: 'Logging Misconfiguration', description: 'System logs do not capture security-sensitive events adequately.', severity: 'Medium', status: 'Resolved', reportDate: new Date('2024-01-15'), submittedBy: 'Alice', createdAt: new Date() },
-    ];
-}
+// --- API Endpoints ---
 
-// --- API Routes ---
-
-// GET all findings (Dashboard view)
-app.get('/api/findings', async (req, res) => {
-    try {
-        // In a real scenario: const findings = await prisma.auditFinding.findMany();
-        const findings = await getMockFindings(); 
-        res.json(findings);
-    } catch (error) {
-        console.error("Error fetching findings:", error);
-        res.status(500).json({ error: 'Failed to retrieve audit findings' });
-    }
+/**
+ * Endpoint to fetch the total treasury holdings.
+ */
+app.get('/api/treasury/holdings', async (req, res) => {
+  try {
+    const holdings = await prisma.TreasuryHolding.findMany();
+    res.json(holdings);
+  } catch (error) {
+    console.error('Error fetching holdings:', error);
+    res.status(500).json({ error: 'Failed to fetch treasury holdings' });
+  }
 });
 
-// GET single finding (Detail view)
-app.get('/api/findings/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        // In a real scenario: const finding = await prisma.auditFinding.findUnique({ where: { id } });
-        const mockData = [
-            { id: 'a1', title: 'Reentrancy Vulnerability in Token Transfer', description: 'Function X allows recursive calls leading to potential re-entry.', severity: 'Critical', status: 'Open', reportDate: new Date(), submittedBy: 'Alice', createdAt: new Date() }
-        ].find(f => f.id === id);
+/**
+ * Endpoint to fetch all recorded treasury flows.
+ */
+app.get('/api/treasury/flows', async (req, res) => {
+  try {
+    const flows = await prisma.TreasuryFlow.findMany();
+    res.json(flows);
+  } catch (error) {
+    console.error('Error fetching flows:', error);
+    res.status(500).json({ error: 'Failed to fetch treasury flows' });
+  }
+});
 
-        if (!mockData) {
-            return res.status(404).json({ error: 'Finding not found' });
-        }
-        res.json(mockData);
-    } catch (error) {
-        console.error("Error fetching finding:", error);
-        res.status(500).json({ error: 'Failed to retrieve audit finding' });
-    }
+// Basic health check
+app.get('/', (req, res) => {
+    res.send('TrustLance DAO Treasury API is running.');
 });
 
 
 app.listen(PORT, () => {
-    console.log(`Audit Findings Backend running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });

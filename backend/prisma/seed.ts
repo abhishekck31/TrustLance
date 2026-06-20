@@ -1,24 +1,32 @@
-// Seed script for initial data setup.
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'crypto';
+import { BigInt } from 'bigint';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.platformFeeConfig.createMany({
+  // Simulate initial data for demonstration purposes
+  await prisma.TreasuryHolding.createMany({
     data: [
-      { name: "Standard Platform Fee", feePercentage: 500 }, // 5.00%
-      { name: "Premium Platform Fee", feePercentage: 1000 }, // 10.00%
+      { address: "0xDAOAddress1", tokenSymbol: "ETH", balance: BigInt(100000000000) }, // 100 ETH
+      { address: "0xDAOAddress1", tokenSymbol: "USDC", balance: BigInt(500000000000) }, // 500M USDC
     ],
   });
-  console.log('Database seeded with initial platform fee configurations.');
+
+  await prisma.TreasuryFlow.createMany({
+    data: [
+      { fromAddress: "0xDAOAddress1", toAddress: "0xWalletA", token: "ETH", amount: BigInt(10000000000) }, // Flow out 100 ETH
+      { fromAddress: "0xWalletB", toAddress: "0xDAOAddress1", token: "USDC", amount: BigInt(5000000000) }, // Flow in 500M USDC
+    ],
+  });
+
+  console.log('Seeding complete.');
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
+  .finally(() => {
+    prisma.$disconnect();
   });

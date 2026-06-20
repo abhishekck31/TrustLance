@@ -1,129 +1,134 @@
-// Frontend component to display and interact with the dynamic fee engine.
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useQuery } from '@tanstack/react-query'; // Assuming useQuery is available from TanStack Query setup in Next.js context
-import { Card, CardContent, Typography, Button, CircularProgress } from '@mui/material';
+import { format } from 'date-fns';
 
-interface FeeConfig {
-  id: number;
-  name: string;
-  feePercentage: string; // Displayed as percentage (e.g., 5.00%)
-  isActive: boolean;
-  createdAt: string;
+interface Holding {
+  address: string;
+  tokenSymbol: string;
+  balance: string; // Displayed as string/text for large numbers
 }
 
-export default function PlatformFeeEngine() {
-  const [configs, setConfigs] = useState<FeeConfig[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface Flow {
+  fromAddress: string;
+  toAddress: string;
+  token: string;
+  amount: string; // Displayed as string/text for large numbers
+  timestamp: string;
+}
 
-  const fetchConfigs = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.get<FeeConfig[]>('http://localhost:3000/api/fees');
-      setConfigs(response.data);
-    } catch (err) {
-      setError("Failed to fetch fee configurations from the backend.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function TreasuryDashboard() {
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+
+  const API_URL = 'http://localhost:3001/api';
 
   useEffect(() => {
-    fetchConfigs();
+    const fetchData = async () => {
+      try {
+        // Fetch Holdings
+        const holdingsRes = await axios.get(`${API_URL}/treasury/holdings`);
+        setHoldings(holdingsRes.data);
+
+        // Fetch Flows
+        const flowsRes = await axios.get(`${API_URL}/treasury/flows`);
+        setFlows(flowsRes.data);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load dashboard data. Ensure the backend server is running.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const handleCreateFee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newConfig = {
-        name: (e.target.name.value || "New Fee") as string,
-        feePercentage: (e.target.feePercentage.value) as number,
-        isActive: (e.target.isActive.checked)
-    };
+  if (loading) {
+    return <div className="p-8 text-center text-xl mt-10">Loading DAO Treasury Data...</div>;
+  }
 
-    try {
-      await axios.post('http://localhost:3000/api/fees', newConfig);
-      alert("Fee configuration created successfully!");
-      fetchConfigs(); // Refresh list
-    } catch (err) {
-      setError("Failed to create fee configuration.");
-      console.error(err);
-    }
-  };
-
-  const handleUpdateFee = async (id: number, e: React.FormEvent) => {
-    e.preventDefault();
-    const updatedData = {
-        name: (e.target.name.value || "Updated Name") as string,
-        feePercentage: (e.target.feePercentage.value) as number,
-        isActive: (e.target.isActive.checked)
-    };
-
-    try {
-      await axios.put(`http://localhost:3000/api/fees/${id}`, updatedData);
-      alert(`Fee configuration ${id} updated successfully!`);
-      fetchConfigs(); // Refresh list
-    } catch (err) {
-      setError("Failed to update fee configuration.");
-      console.error(err);
-    }
-  };
-
+  if (error) {
+    return <div className="p-8 text-red-600 text-center mt-10">Error: {error}</div>;
+  }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Platform Fee Engine</h1>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
+      <header className="mb-8 pb-4 border-b">
+        <h1 className="text-4xl font-extrabold text-gray-900">DAO Treasury Dashboard</h1>
+        <p className="text-gray-600 mt-2">Real-time Holdings and Transaction Flows</p>
+      </header>
 
-      {error && <p style={{ color: 'red', border: '1px solid red', padding: '10px' }}>Error: {error}</p>}
+      {/* Holdings Section */}
+      <section className="mb-12 bg-white p-6 rounded-xl shadow-lg">
+        <h2 className="text-2xl font-bold text-indigo-700 mb-4 border-b pb-2">Treasury Holdings</h2>
+        {holdings.length === 0 ? (
+          <p className="text-gray-500 italic">No treasury holdings found.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-indigo-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {holdings.map((holding) => (
+                  <tr key={holding.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{holding.address}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{holding.tokenSymbol}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-600">
+                      {/* Formatting large BigInt balance */}
+                      {holding.balance.toString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      <Button variant="contained" color="primary" onClick={fetchConfigs} disabled={loading}>
-        {loading ? <CircularProgress size={24} /> : 'Refresh Configurations'}
-      </Button>
-
-      <h2>Dynamic Fee Management</h2>
-
-      {configs.length === 0 ? (
-        <p>No fee configurations found. Add one below.</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-          {configs.map((config) => (
-            <Card key={config.id} style={{ boxShadow: '2px 2px 5px rgba(0,0,0,0.1)' }}>
-              <CardContent>
-                <Typography variant="h6">{config.name}</Typography>
-                <p><strong>Fee Setting:</strong> {config.feePercentage.toFixed(2)}%</p>
-                <p>Status: {config.isActive ? 'Active' : 'Inactive'}</p>
-
-                {/* Edit Form */}
-                <form onSubmit={handleUpdateFee}>
-                    <div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                        <label>Name: <input type="text" name="name" defaultValue={config.name} required /></label><br/>
-                        <label>Fee (%): <input type="number" name="feePercentage" step="0.01" required /></label><br/>
-                        <label>Active: <input type="checkbox" name="isActive" checked={config.isActive} onChange={(e) => handleUpdateFee(config.id, { name: e.target.name, feePercentage: parseFloat(e.target.name), isActive: e.target.checked })} /></label><br/>
-                        <Button variant="contained" color="secondary" type="submit">Save Changes</Button>
-                    </div>
-                </form>
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* Add New Fee Form */}
-          <Card style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
-            <CardContent>
-              <h3>Add New Configuration</h3>
-              <form onSubmit={handleCreateFee}>
-                <label>Name: <input type="text" name="name" required /></label><br/>
-                <label>Fee (%): <input type="number" name="feePercentage" step="0.01" required /></label><br/>
-                <label>Active: <input type="checkbox" name="isActive" checked /></label><br/>
-                <Button type="submit" variant="contained" color="error">Create Fee</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* Flows Section */}
+      <section className="bg-white p-6 rounded-xl shadow-lg">
+        <h2 className="text-2xl font-bold text-indigo-700 mb-4 border-b pb-2">Treasury Flows (Transactions)</h2>
+        {flows.length === 0 ? (
+          <p className="text-gray-500 italic">No treasury flows recorded.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-indigo-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {flows.map((flow) => (
+                  <tr key={flow.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{format(new Date(flow.timestamp), 'yyyy-MM-dd HH:mm')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.fromAddress}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700">{flow.toAddress}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.token}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">
+                      {/* Formatting large BigInt amount */}
+                      {flow.amount.toString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
     </div>
   );
