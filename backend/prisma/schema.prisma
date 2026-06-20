@@ -1,4 +1,4 @@
-// Define the database schema for persistence, even if the core logic is on-chain.
+// Define the PostgreSQL schema for dynamic fee configuration.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,13 +8,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Schema to store administrative configurations or off-chain logs related to fees
-model PlatformConfig {
+model PlatformFeeConfig {
   id          Int      @id @default(autoincrement())
-  feeBPS      Int      // Fee in Basis Points
+  name        String   @unique
+  feePercentage BigInt // Stored as basis points (e.g., 100 for 1%)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  ownerAddress String // Stored as string for flexibility if complex
 }
 
-// Example setup for configuration storage (optional, mainly for administrative display)
-// In a production system, this might synchronize state from the blockchain.
+// Placeholder for potential token management if needed later
+model FeeRecord {
+  id          Int      @id @default(autoincrement())
+  configId    Int
+  amount      BigInt // Total amount involved
+  feeApplied  BigInt // Calculated fee amount
+  platformFee BigInt // The configured platform fee percentage
+}

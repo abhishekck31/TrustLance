@@ -1,22 +1,17 @@
-// Seed data for initial platform configuration
+// Seed script for initial data setup.
 import { PrismaClient } from '@prisma/client';
-import { crypto } from 'crypto';
+import { hash } from 'crypto';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding PlatformConfig...');
-
-  // Initialize with a default fee (e.g., 100 BPS = 1%)
-  await prisma.platformConfig.create({
-    data: {
-      feeBPS: 100,
-      updatedAt: new Date(),
-      ownerAddress: "0xAdminWalletAddressPlaceholder" // Placeholder, actual owner is set on chain
-    },
+  await prisma.platformFeeConfig.createMany({
+    data: [
+      { name: "Standard Platform Fee", feePercentage: 500 }, // 5.00%
+      { name: "Premium Platform Fee", feePercentage: 1000 }, // 10.00%
+    ],
   });
-
-  console.log('Seeding complete.');
+  console.log('Database seeded with initial platform fee configurations.');
 }
 
 main()

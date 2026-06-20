@@ -1,74 +1,130 @@
-// Main dashboard for viewing and managing the fee engine.
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// Frontend component to display and interact with the dynamic fee engine.
+'use client';
 
-export default function FeeDashboard() {
-    return (
-        <div className="p-8 bg-gray-50 min-h-screen">
-            <header className="mb-8 border-b pb-4">
-                <h1 className="text-4xl font-bold text-gray-900">Platform Fee Engine</h1>
-                <p className="text-lg text-gray-600 mt-2">Dynamic Fee Configuration</p>
-            </header>
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useQuery } from '@tanstack/react-query'; // Assuming useQuery is available from TanStack Query setup in Next.js context
+import { Card, CardContent, Typography, Button, CircularProgress } from '@mui/material';
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <Card className="shadow-lg border-t-4 border-blue-500">
-                    <CardHeader>
-                        <CardTitle>Current On-Chain Fee</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <p className="text-xl font-semibold text-blue-600">1.25% (Mock)</p>
-                        <p>Basis Points: 1250</p>
-                        <p className="text-sm text-gray-500 mt-2">Source: Blockchain State</p>
-                    </CardContent>
-                </Card>
+interface FeeConfig {
+  id: number;
+  name: string;
+  feePercentage: string; // Displayed as percentage (e.g., 5.00%)
+  isActive: boolean;
+  createdAt: string;
+}
 
-                <Card className="shadow-lg border-t-4 border-green-500">
-                    <CardHeader>
-                        <CardTitle>Off-Chain Configuration</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <p className="text-xl font-semibold text-green-600">1.00% (Last Sync)</p>
-                        <p>Basis Points: 100</p>
-                        <p className="text-sm text-gray-500 mt-2">Source: Database Record</p>
-                    </CardContent>
-                </Card>
+export default function PlatformFeeEngine() {
+  const [configs, setConfigs] = useState<FeeConfig[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-                <Card className="shadow-lg border-t-4 border-yellow-500">
-                    <CardHeader>
-                        <CardTitle>Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <p>Use the panel below to configure new fees.</p>
-                        <Link href="/admin/set-fee" className="block w-full text-center py-2 px-4 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition">
-                            Configure New Fee (Admin)
-                        </Link>
-                    </CardContent>
-                </Card>
-            </div>
+  const fetchConfigs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get<FeeConfig[]>('http://localhost:3000/api/fees');
+      setConfigs(response.data);
+    } catch (err) {
+      setError("Failed to fetch fee configurations from the backend.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <div className="bg-white p-6 rounded-lg shadow-xl border">
-                <h2 className="text-2xl font-semibold mb-4">Dynamic Update Panel</h2>
-                <p className="mb-4 text-sm text-gray-700">Enter the desired fee in Basis Points (e.g., 500 for 5%) and submit to trigger the transaction.</p>
+  useEffect(() => {
+    fetchConfigs();
+  }, []);
 
-                <form action="/api/update-fee" method="post">
-                    <div className="flex items-center space-x-4 mb-4">
-                        <label htmlFor="newFeeBPS" className="block text-sm font-medium text-gray-700">New Fee (Basis Points):</label>
-                        <input type="number" id="newFeeBPS" name="newFeeBPS" required 
-                               placeholder="e.g., 500" 
-                               className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                               min="1"
-                               max="10000" />
+  const handleCreateFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newConfig = {
+        name: (e.target.name.value || "New Fee") as string,
+        feePercentage: (e.target.feePercentage.value) as number,
+        isActive: (e.target.isActive.checked)
+    };
+
+    try {
+      await axios.post('http://localhost:3000/api/fees', newConfig);
+      alert("Fee configuration created successfully!");
+      fetchConfigs(); // Refresh list
+    } catch (err) {
+      setError("Failed to create fee configuration.");
+      console.error(err);
+    }
+  };
+
+  const handleUpdateFee = async (id: number, e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedData = {
+        name: (e.target.name.value || "Updated Name") as string,
+        feePercentage: (e.target.feePercentage.value) as number,
+        isActive: (e.target.isActive.checked)
+    };
+
+    try {
+      await axios.put(`http://localhost:3000/api/fees/${id}`, updatedData);
+      alert(`Fee configuration ${id} updated successfully!`);
+      fetchConfigs(); // Refresh list
+    } catch (err) {
+      setError("Failed to update fee configuration.");
+      console.error(err);
+    }
+  };
+
+
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Platform Fee Engine</h1>
+
+      {error && <p style={{ color: 'red', border: '1px solid red', padding: '10px' }}>Error: {error}</p>}
+
+      <Button variant="contained" color="primary" onClick={fetchConfigs} disabled={loading}>
+        {loading ? <CircularProgress size={24} /> : 'Refresh Configurations'}
+      </Button>
+
+      <h2>Dynamic Fee Management</h2>
+
+      {configs.length === 0 ? (
+        <p>No fee configurations found. Add one below.</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+          {configs.map((config) => (
+            <Card key={config.id} style={{ boxShadow: '2px 2px 5px rgba(0,0,0,0.1)' }}>
+              <CardContent>
+                <Typography variant="h6">{config.name}</Typography>
+                <p><strong>Fee Setting:</strong> {config.feePercentage.toFixed(2)}%</p>
+                <p>Status: {config.isActive ? 'Active' : 'Inactive'}</p>
+
+                {/* Edit Form */}
+                <form onSubmit={handleUpdateFee}>
+                    <div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                        <label>Name: <input type="text" name="name" defaultValue={config.name} required /></label><br/>
+                        <label>Fee (%): <input type="number" name="feePercentage" step="0.01" required /></label><br/>
+                        <label>Active: <input type="checkbox" name="isActive" checked={config.isActive} onChange={(e) => handleUpdateFee(config.id, { name: e.target.name, feePercentage: parseFloat(e.target.name), isActive: e.target.checked })} /></label><br/>
+                        <Button variant="contained" color="secondary" type="submit">Save Changes</Button>
                     </div>
-                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-150">
-                        Execute Fee Update Transaction
-                    </Button>
                 </form>
+              </CardContent>
+            </Card>
+          ))}
 
-                <div id="result" className="mt-6 p-4 border-2 border-dashed rounded-lg hidden">
-                    {/* Results will be injected here */}
-                </div>
-            </div>
+          {/* Add New Fee Form */}
+          <Card style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
+            <CardContent>
+              <h3>Add New Configuration</h3>
+              <form onSubmit={handleCreateFee}>
+                <label>Name: <input type="text" name="name" required /></label><br/>
+                <label>Fee (%): <input type="number" name="feePercentage" step="0.01" required /></label><br/>
+                <label>Active: <input type="checkbox" name="isActive" checked /></label><br/>
+                <Button type="submit" variant="contained" color="error">Create Fee</Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-    );
+      )}
+
+    </div>
+  );
 }
