@@ -1,120 +1,114 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import axios from 'axios';
-import { Separator } from '@tailwindcss/components'; // Assuming Tailwind setup supports this or using standard div separators
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Assuming shadcn/ui components structure
+import { useState } from 'react';
+import { analyzeEvidence } from '@/api/evidenceApi'; // Assuming API wrapper exists
+import { Loader2, UploadCloud } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
-interface Proposal {
-  id: number;
-  title: string;
-  description: string;
-  body: string;
-  aiSummary: string | null;
-}
+export default function HomePage() {
+  const [title, setTitle] = useState('');
+  const [evidenceText, setEvidenceText] = useState('');
+  const [analysis, setAnalysis] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export default function AIgovernanceAssistant() {
-  const [proposalId, setProposalId] = useState<number>(1); // Start with the seeded ID
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [loading, setLoading] = useState<string>('idle');
-  const [error, setError] = useState<string>('');
-
-  const fetchProposal = useCallback(async (id: number) => {
-    setLoading('loading');
-    setError('');
-    try {
-      const response = await axios.get<Proposal>(`/api/proposals/${id}`);
-      setProposal(response.data);
-    } catch (err) {
-      setError('Failed to fetch proposal data.');
-      console.error(err);
-    } finally {
-      setLoading('idle');
+  const handleAnalyze = async () => {
+    if (!title || !evidenceText) {
+      setError("Please provide both a title and evidence text.");
+      return;
     }
-  }, []);
 
-  const triggerSummarization = async () => {
-    if (!proposalId || !proposal) return;
+    setIsLoading(true);
+    setError(null);
+    setAnalysis(null);
 
-    setLoading('processing');
-    setError('');
     try {
-        const response = await axios.post<any>(`/api/proposals/${proposalId}/summarize`);
-        // Refresh the data after successful summarization
-        await fetchProposal(proposalId);
-        alert(`Success! Summary received: ${response.data.summary}`);
-    } catch (err) {
-        setError('Failed to trigger AI summarization.');
-        console.error(err);
+      // Send data to the backend analysis endpoint
+      const response = await analyzeEvidence(title, evidenceText);
+      setAnalysis(response);
+    } catch (err: any) {
+      setError(err.message || "An unknown error occurred during analysis.");
+      setAnalysis(null);
     } finally {
-        setLoading('idle');
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <header className="mb-10 border-b pb-4">
-        <h1 className="text-4xl font-bold text-gray-900">AI Governance Assistant</h1>
-        <p className="text-lg text-gray-600 mt-2">Summarize complex Web3 proposals instantly.</p>
+      <header className="mb-10 text-center">
+        <h1 className="text-4xl font-extrabold text-gray-900">AI Dispute Evidence Analyzer</h1>
+        <p className="mt-2 text-xl text-gray-600">Analyze submissions and evidence using AI summarization.</p>
       </header>
 
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Proposal Display */}
-        {proposal ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>{proposal.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-blue-600 mb-2">Original Proposal Text</h2>
-                <p className="whitespace-pre-wrap text-gray-700 border p-4 bg-gray-50 rounded">{proposal.body}</p>
-              </div>
+      <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-8 border border-gray-100">
+        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-3">Submit Evidence for Analysis</h2>
 
-              {proposal.aiSummary ? (
-                <>
-                  <div className="pt-6 border-t-2 border-green-500 bg-green-50 p-4 rounded-lg">
-                    <h2 className="text-xl font-semibold text-green-700 mb-3">AI Generated Summary</h2>
-                    <p className="whitespace-pre-wrap text-gray-800">{proposal.aiSummary}</p>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                    <p className="text-gray-500">Click 'Summarize' to generate the AI summary.</p>
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="text-center p-12 bg-white rounded-lg shadow border">
-            <h3 className="text-xl text-gray-500">Select a Proposal to Start</h3>
-            <p className="text-gray-400 mt-2">Currently viewing simulated proposal ID: {proposalId}</p>
+        <div className="space-y-6">
+          {/* Title Input */}
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Dispute Title</label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+              placeholder="Enter the dispute title"
+            />
           </div>
-        )}
 
-        {/* Action Button */}
-        {proposal && (
-          <div className="flex justify-center pt-6">
-            <button
-              onClick={triggerSummarization}
-              disabled={loading === 'processing'}
-              className={`px-8 py-3 text-lg font-semibold rounded-full transition duration-300 shadow-lg 
-                ${loading === 'processing'
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white transform hover:scale-[1.02]'
-                }`}
-            >
-              {loading === 'processing' ? 'Generating Summary...' : 'Generate AI Summary'}
-            </button>
+          {/* Evidence Submission */}
+          <div>
+            <label htmlFor="evidence" className="block text-sm font-medium text-gray-700 mb-1">Submission/Evidence Text</label>
+            <textarea
+              id="evidence"
+              rows={15}
+              value={evidenceText}
+              onChange={(e) => setEvidenceText(e.target.value)}
+              className="w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm resize-y"
+              placeholder="Paste the full text of the submission, documents, or evidence here..."
+            />
           </div>
-        )}
 
-        {error && (
-            <div className="p-4 bg-red-100 text-red-700 border border-red-400 rounded">
-                Error: {error}
+          {/* Analysis Button */}
+          <Button 
+            onClick={handleAnalyze} 
+            disabled={isLoading || !title || !evidenceText}
+            className={`w-full flex items-center justify-center gap-2 transition duration-150 ${isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'} text-white shadow-md`}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" /> Analyzing...
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-5 h-5" /> Analyze Evidence
+              </>
+            )}
+          </Button>
+
+          {/* Results Display */}
+          {analysis && (
+            <Card className="mt-8 border-l-4 border-indigo-500 shadow-lg animate-in fade-in duration-300">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xl font-bold text-indigo-700">AI Analysis Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm font-medium text-gray-600 mb-3">Summary Generated:</p>
+                <div className="whitespace-pre-wrap bg-indigo-50 p-4 rounded-lg border border-indigo-200 text-gray-800">{analysis.summary}</div>
+              </CardContent>
+            </Card>
+          )}
+
+          {error && (
+            <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              Error: {error}
             </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
