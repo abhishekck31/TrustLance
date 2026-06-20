@@ -1,3 +1,4 @@
+// Schema definition for the backend database (PostgreSQL)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,25 +8,47 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String   @unique
+  walletAddress String @unique // Store derived wallet address for easy lookup
+  createdAt DateTime @default(now())
+  listings  Listing[]
+}
+
 model Category {
   id          Int      @id @default(autoincrement())
   name        String   @unique
   description String?
-  createdAt   DateTime @default(now())
   listings    Listing[]
 }
 
 model Listing {
   id          Int      @id @default(autoincrement())
-  categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
   title       String
-  price       Float   // Storing price as Float for simplicity, use BigInt/Wei in production
-  sellerAddress String // Address of the seller (for off-chain lookup/registration)
-  status      String   @default("Active") // Active, Sold, Draft
+  categoryName String
+  price       Float // Stored as Float for simplicity in mock, should be Decimal in production
+  sellerAddress String // Address on chain
+  status      String   @default("active") // active, sold
   createdAt   DateTime @default(now())
 
-  @@index([categoryId])
+  user        User     @relation(fields: [sellerAddress], references: [walletAddress])
+  category    Category @relation(fields: [categoryName], references: [name])
 }
 
-// Note: In a full system, we would also model Users and potentially Token ownership here.
+// To handle the Web3 integration aspect in the backend (optional but good practice)
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  listingId   Int
+  buyerAddress String
+  amount      Float
+  status      String // pending, completed, failed
+  createdAt   DateTime @default(now())
+}
+
+// Placeholder for setup data migration
+enum ListingStatus {
+  ACTIVE
+  SOLD
+}

@@ -1,61 +1,77 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
 contract Marketplace {
     address public owner;
-    uint256 public nextListingId;
-
-    // Events for tracking marketplace activity
-    event ListingCreated(uint256 listingId, address indexed seller, string category);
-    event ItemSold(uint256 listingId, address indexed buyer, uint256 price);
 
     struct Listing {
         uint256 id;
+        string title;
         string category;
-        address seller;
         uint256 price;
+        address seller;
         bool isSold;
     }
 
     mapping(uint256, Listing) public listings;
+    uint256 public nextListingId;
 
-    event ListingUpdated(uint256 listingId, string newCategory);
+    event ListingCreated(uint256 id, string category, uint256 price);
+    event ListingSold(uint256 id, address indexed buyer);
 
-    constructor() Ownable(msg.sender) {}
+    constructor() {
+        owner = msg.sender;
+        nextListingId = 1;
+    }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not the owner");
+        require(msg.sender == owner, "Only owner can call this");
         _;
     }
 
     function createListing(
-        string memory category,
-        uint256 price,
-        address seller
+        string memory _title,
+        string memory _category,
+        uint256 _price
     ) public onlyOwner returns (uint256) {
         uint256 newId = nextListingId++;
-        listings[newId] = Listing(newId, category, seller, price, false);
-        emit ListingCreated(newId, seller, category);
+        listings[newId] = Listing(
+            newId,
+            _title,
+            _category,
+            _price,
+            msg.sender,
+            false
+        );
+        emit ListingCreated(newId, _category, _price);
         return newId;
     }
 
-    function sellItem(uint256 listingId, address buyer) public onlyOwner {
-        require(listingId > 0 && listingId <= nextListingId, "Invalid listing ID");
-        require(!listings[listingId].isSold, "Item already sold");
+    function buyListing(uint256 _listingId) public payable {
+        require(_listingId > 0 && listings[_listingId].isSold == false, "Invalid listing");
+        Listing storage listing = listings[_listingId];
 
-        uint256 price = listings[listingId].price;
+        require(msg.value >= listing.price, "Insufficient payment");
 
-        // In a real system, token transfer logic would happen here (ERC-721/ERC-20 interaction)
+        listing.isSold = true;
 
-        listings[listingId].isSold = true;
-        emit ItemSold(listingId, buyer, price);
+        emit ListingSold(_listingId, msg.sender);
     }
 
-    function getListingDetails(uint256 listingId) public view returns (string memory category, address seller, uint256 price, bool sold) {
-        Listing storage listing = listings[listingId];
-        return tuple(listing.category, listing.seller, listing.price, listing.isSold);
+    function getListing(uint256 _listingId) public view returns (
+        string memory title,
+        string memory category,
+        uint256 price,
+        address seller,
+        bool sold
+    ) {
+        Listing storage listing = listings[_listingId];
+        return (
+            listing.title,
+            listing.category,
+            listing.price,
+            listing.seller,
+            listing.isSold
+        );
     }
 }

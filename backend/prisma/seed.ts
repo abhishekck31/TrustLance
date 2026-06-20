@@ -1,4 +1,6 @@
+// Script to populate initial data
 import { PrismaClient } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
@@ -6,27 +8,57 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
 
-  // Seed Categories
-  await prisma.category.createMany({
-    data: [
-      { name: 'Design' },
-      { name: 'Development' },
-      { name: 'AI' },
-      { name: 'Marketing' },
-    ],
+  // 1. Create initial Categories
+  const categories = ['Design', 'Dev', 'AI', 'Marketing'];
+  const categoryRecords = await prisma.Category.createMany({
+    data: categories.map(cat => ({ name: cat })),
+  });
+  console.log(`Created ${categoryRecords.count} categories.`);
+
+  // 2. Create initial Users (Mocks for sellers)
+  const users = [];
+  for (let i = 0; i < 3; i++) {
+    const walletAddress = randomBytes(32).toString('hex');
+    users.push({
+      email: `seller${i}@example.com`,
+      username: `seller_${i}`,
+      walletAddress: walletAddress,
+    });
+  }
+
+  const userRecords = await prisma.User.createMany({
+    data: users,
+  });
+  console.log(`Created ${userRecords.count} users.`);
+
+  // 3. Create initial Listings
+  const categoryNames = ['Design', 'Dev', 'AI', 'Marketing'];
+  const listingData = [];
+
+  for (let i = 0; i < 5; i++) {
+    const randomCat = categoryNames[Math.floor(Math.random() * categoryNames.length)];
+    const randomSeller = users[Math.floor(Math.random() * users.length)].walletAddress;
+    const price = parseFloat((Math.random() * 1000).toFixed(2));
+
+    listingData.push({
+      title: faker.commerce.productName(),
+      categoryName: randomCat,
+      price: price,
+      sellerAddress: randomSeller,
+    });
+  }
+
+  await prisma.Listing.createMany({
+    data: listingData.map(data => ({
+        title: data.title,
+        categoryName: data.categoryName,
+        price: data.price,
+        sellerAddress: data.sellerAddress,
+        status: 'active',
+    })),
   });
 
-  // Seed Sample Listings (Requires linking to actual addresses/contracts for production)
-  // For this seed, we simulate data that would be populated by the blockchain later.
-  await prisma.listing.createMany({
-    data: [
-      { categoryId: 1, title: 'UI/UX Design Service', price: 500.00, sellerAddress: '0xSellerA1234567890abcdefgh', status: 'Active' },
-      { categoryId: 2, title: 'Full Stack Dev Gig', price: 1500.00, sellerAddress: '0xSellerB1234567890abcdefgh', status: 'Active' },
-      { categoryId: 3, title: 'Custom AI Model Training', price: 800.00, sellerAddress: '0xSellerC1234567890abcdefgh', status: 'Draft' },
-    ],
-  });
-
-  console.log('Seeding complete.');
+  console.log('Seeding complete!');
 }
 
 main()
