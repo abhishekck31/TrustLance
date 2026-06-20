@@ -1,99 +1,93 @@
 'use client';
-import { useState, useEffect } from 'react';
-import MilestoneForm from '../components/MilestoneForm';
+
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { ArrowUpRight, AlertTriangle, Clock } from 'lucide-react';
 
-// Placeholder API URL - should be configured via environment variables in a real setup
-const API_URL = 'http://localhost:3000/api/milestones';
+// Define the type for the data we expect from the backend
+interface SuspiciousActivity {
+  id: number;
+  userAddress: string;
+  amount: string; // Received as string from API, treat as BigInt conceptually
+  reason: string;
+  timestamp: string;
+  isReported: boolean;
+}
 
-export default function HomePage() {
-  const [milestones, setMilestones] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+export default function SecurityDashboard() {
+  const [activities, setActivities] = useState<SuspiciousActivity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch Milestones
-  const fetchMilestones = async () => {
-    setLoading(true);
-    setError(null);
+  const fetchActivities = async () => {
     try {
-      const response = await axios.get(API_URL);
-      setMilestones(response.data);
+      const response = await axios.get('http://localhost:3001/api/suspicious-activities');
+      setActivities(response.data);
+      setLoading(false);
     } catch (err) {
-      console.error('Error fetching milestones:', err);
-      setError('Failed to load milestones from the server.');
-    } finally {
+      console.error('Error fetching data:', err);
+      setError('Failed to load security data from the backend.');
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMilestones();
+    fetchActivities();
   }, []);
 
-  // Handle Form Submission
-  const handleFormSubmit = async (data: { title: string; description: string | null; progress: number }) => {
-    try {
-      const response = await axios.post(API_URL, data);
-      console.log('Milestone submitted successfully:', response.data);
-      // Refresh the list upon successful submission
-      fetchMilestones();
-    } catch (err) {
-      console.error('Error submitting milestone:', err);
-      setError('Failed to submit milestone.');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 border-b pb-2">TrustLance Milestone Manager</h1>
-        <p className="text-gray-600 mt-2">Track, submit, and manage approval flows for project milestones.</p>
+    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+      <header className="mb-10 border-b pb-4 border-indigo-200">
+        <h1 className="text-4xl font-extrabold text-indigo-700 flex items-center">
+          <AlertTriangle className="w-8 h-8 mr-3 text-red-600" /> TrustLance Security Monitor
+        </h1>
+        <p className="text-gray-600 mt-2">Real-time tracking of suspicious on-chain activities</p>
       </header>
 
-      {/* Milestone Submission Form */}
-      <div className="max-w-3xl mx-auto mb-12">
-        <MilestoneForm onSubmit={handleFormSubmit} />
+      <div className="bg-white shadow-2xl rounded-xl p-6 md:p-10">
+        {loading ? (
+          <div className="flex justify-center items-center h-64 text-indigo-500">
+            <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M12 0C6.477 0 0 6.477 0 12s6.477 12 12 12 12-6.477 12-12S17.523 0 12 0z"></path>
+            </svg>
+            Loading Suspicious Data...
+          </div>
+        ) : error ? (
+          <div className="text-red-600 font-medium">Error: {error}</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-indigo-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Address</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (ETH)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {activities.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">No suspicious activities found</td>
+                  </tr>
+                ) : (
+                  activities.map((activity) => (
+                    <tr key={activity.id} className="hover:bg-red-50 transition duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{new Date(activity.timestamp).toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{activity.userAddress}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">{activity.amount}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-md overflow-hidden truncate">
+                        {activity.reason}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      {/* Milestone List Display */}
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Current Milestones</h2>
-
-      {loading ? (
-        <p className="text-center text-lg text-indigo-500">Loading milestones...</p>
-      ) : error ? (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          Error: {error}
-        </div>
-      ) : milestones.length === 0 ? (
-        <p className="text-center text-lg text-gray-500">No milestones found.</p>
-      ) : (
-        <div className="space-y-4">
-          {milestones.map((milestone) => (
-            <div key={milestone.id} className="bg-white p-6 rounded-lg shadow-md border">
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-xl font-bold text-indigo-700">{milestone.title}</h3>
-                <span className={`px-3 py-1 inline-block rounded-full text-sm font-semibold ${
-                    milestone.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                    milestone.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                    milestone.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  Status: {milestone.status}
-                </span>
-              </div>
-              <p className="text-gray-600 mb-2"><strong>Description:</strong> {milestone.description || 'N/A'}</p>
-              <div className="mt-3 border-t pt-3">
-                <p className="font-medium">Progress: {milestone.progress}%</p>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
-                  <div 
-                    className={`h-2.5 rounded-full ${milestone.progress === 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
-                    style={{ width: `${milestone.progress}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

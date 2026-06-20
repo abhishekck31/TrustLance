@@ -1,41 +1,17 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model Project {
-  id          String   @id @db.ObjectId
-  name        String
-  disputed   Boolean   @default(false)
-  status      String    // e.g., 'Disputed', 'Voting', 'Resolved'
-  currentVotes Int       @default(0)
-  totalStaked   Int       @default(0)
+generator client {
+  provider = "prisma-client-js"
 }
 
-model Vote {
-  id          String   @id @db.ObjectId
-  projectId   String   @db.ObjectId
-  jurorId     String   // Assuming a user ID reference
-  voteValue   Int      // Weight or score of the vote
-  timestamp   DateTime
-  isFinal     Boolean  @default(false)
-}
-
-model StakingPool {
-  id          String   @id @db.ObjectId
-  projectId   String   @db.ObjectId
-  stakedAmount Int
-  totalReward Float
-  lastUpdated DateTime
-}
-
-// Example of a Juror profile (simplified for dashboard context)
-model JurorProfile {
-  id            String   @id @db.ObjectId
-  walletAddress String
-  name          String
+model SuspiciousActivity {
+  id          Int      @id @default(autoincrement())
+  userAddress String   // Storing as string for flexibility, could use BigInt/Text depending on context
+  amount      BigInt    // Use BigInt for large amounts
+  reason      String
+  timestamp   DateTime  @default(now())
+  isReported  Boolean   @default(false)
 }
