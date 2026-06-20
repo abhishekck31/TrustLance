@@ -1,12 +1,13 @@
+# Dockerfile for the Node.js/Express Backend service
 FROM node:18-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
 
 COPY . .
 
-EXPOSE 3001
+EXPOSE 3000
 
-CMD ["node", "src/index.ts"]
+CMD ["node", "server.js"]

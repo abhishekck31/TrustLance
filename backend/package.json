@@ -1,18 +1,16 @@
-// Dependencies for the Node.js backend (example)
 {
   "name": "trustlance-backend",
   "version": "1.0.0",
-  "description": "Backend API for TrustLance monorepo",
-  "main": "src/index.ts",
+  "description": "TrustLance Backend API",
+  "main": "server.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "dev": "nodemon src/index.ts",
-    "prisma:seed": "ts-node ./prisma/seed.ts"
+    "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "@prisma/client": "^5.15.0"
+    "@prisma/client": "^5.x.x",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "redis": "^4.6.0",
+    "prisma": "^5.x.x"
   }
 }
