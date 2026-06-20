@@ -1,19 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model AuditFinding {
-  id          Int      @id @default(autoincrement())
-  title       String   @db.VarChar(255)
-  description String   @db.Text
+  id          String   @id @default(cuid())
+  title       String
+  description String
   severity    String   // e.g., Critical, High, Medium, Low
   status      String   // e.g., Open, In Progress, Resolved, Closed
-  reportedBy  String   // User or team responsible
-  dateReported DateTime @default(now())
-  resolutionDate DateTime?
+  findings    Json     // Detailed findings structure (can be complex)
+  reportDate  DateTime
+  submittedBy String // User who submitted the finding
+  statusHistory Json // History of status changes
+  createdAt   DateTime @default(now())
 }
