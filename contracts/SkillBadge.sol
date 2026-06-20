@@ -1,49 +1,50 @@
-// Solidity smart contract for managing Verifiable Skill Badges.
-// Uses basic ERC721 structure conceptually, focusing on ownership and metadata links.
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC711/ERC711.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title SkillBadge
- * @notice Contract to represent verifiable, on-chain skill badges/certifications.
- *         Each badge is linked to a specific skill and an owner.
+ * @notice Smart contract for issuing and managing verifiable skill badges on-chain.
  */
-contract SkillBadge is ERC721, Ownable {
-    // Mapping from Token ID to the skill identifier (for simplicity in this proof)
-    mapping(uint256 => string) public badgeSkills;
+contract SkillBadge is ERC711, Ownable {
+    // Mapping from Badge ID to the actual certification details (in a real system, this might reference an off-chain Verifiable Credential)
+    mapping(uint256 => string) public badgeDetails;
 
-    event BadgeIssued(uint256 indexed tokenId, address indexed owner, string skill);
+    event BadgeIssued(address indexed owner, uint256 tokenId);
 
     /**
-     * @notice Mints a new Skill Badge. Only callable by the contract owner or an authorized issuer role.
-     * @param to The address of the recipient.
-     * @param skill The unique identifier/name of the skill certified.
+     * @notice Mints a new skill badge.
+     * @param to The address that will receive the NFT/Badge.
+     * @param name The name of the skill (e.g., "Advanced Solidity Development").
+     * @param description A detailed description of what the badge certifies.
+     * @return The ID of the newly minted badge.
      */
-    function issueBadge(address to, string memory skill) public onlyOwner returns (uint256) {
+    function issueBadge(address to, string memory name, string memory description) public onlyOwner returns (uint256) {
         uint256 newTokenId = nextTokenId();
         _safeMint(to, newTokenId);
-        badgeSkills[newTokenId] = skill;
-        emit BadgeIssued(newTokenId, to, skill);
+        _setTokenURI(newTokenId, string(abi.encodePacked("ipfs://skill_badge/", strings(newTokenId))); // Placeholder for IPFS URI linking to off-chain proof
+        badgeDetails[newTokenId] = description;
+        emit BadgeIssued(msg.sender, newTokenId);
         return newTokenId;
     }
 
     /**
-     * @notice Retrieves the skill associated with a specific badge ID.
-     * @param tokenId The ID of the badge to check.
-     * @return skill The string identifier of the skill.
+     * @notice Retrieves the details for a specific badge.
+     * @param tokenId The ID of the skill badge.
+     * @return The descriptive text of the badge.
      */
-    function getSkill(uint256 tokenId) public view returns (string memory) {
+    function getBadgeDetails(uint256 tokenId) public view returns (string memory) {
         require(_exists(tokenId), "Error: Token does not exist");
-        return badgeSkills[tokenId];
+        return badgeDetails[tokenId];
     }
 
     /**
-     * @notice Verifies ownership of a specific skill badge.
-     * @param tokenId The ID of the badge.
+     * @notice Checks if an address owns a specific skill badge.
+     * @param tokenId The ID of the skill badge.
      * @param owner The address to check.
-     * @return bool True if the owner matches, false otherwise.
+     * @return True if the owner owns the token, false otherwise.
      */
     function ownsBadge(uint256 tokenId, address owner) public view returns (bool) {
         return ownerOf(tokenId) == owner;

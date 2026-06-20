@@ -1,55 +1,97 @@
-// Node.js Express server setup, linking to the database layer (Prisma mock) and potential blockchain interaction.
 const express = require('express');
-const bodyParser = require('body-parser');
+const { PrismaClient } = require('@prisma/client');
 const cors = require('cors');
-// const prisma = require('./prismaClient'); // Assume Prisma setup exists
+require('dotenv').config();
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
+// Initialize Prisma Client
+const prisma = new PrismaClient();
+
+// Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// --- Mock Data/Service Layer ---
-// In a real application, this layer would handle Web3 interactions (ethers.js)
-// and database persistence (Prisma calls).
+// --- Mock Blockchain Interaction Functions (Replace with actual Web3 provider calls) ---
 
-app.get('/api/talents/:id', async (req, res) => {
-    const talentId = parseInt(req.params.id);
-    console.log(`Fetching talent details for ID: ${talentId}`);
+/**
+ * Mock function to fetch a badge from the blockchain.
+ * In a real app, this would use Ethers.js to query the deployed contracts.
+ */
+async function getBadgeFromChain(tokenId) {
+    console.log(`[MOCK] Querying chain for Token ID: ${tokenId}`);
+    // Mock data simulating fetching details from the deployed contract
+    if (tokenId === 101) {
+        return {
+            tokenId: 101,
+            name: "Advanced Solidity Development",
+            description: "Certified expertise in writing secure and complex smart contracts using Rust/Solidity."
+        };
+    }
+    if (tokenId === 102) {
+        return {
+            tokenId: 102,
+            name: "Web3 Frontend Mastery",
+            description: "Proficiency in Next.js, React hooks, and Wagmi integration for decentralized applications."
+        };
+    }
+    return null;
+}
 
-    // Mock response based on contract data simulation
-    const mockData = {
-        id: talentId,
-        name: `Talent_${talentId}`,
-        isFeatured: talentId % 5 === 0, // Mock featured status for testing
-        details: {
-            talentAddress: '0xMockTalentAddress',
-            listingTimestamp: Date.now() - (talentId * 1000)
-        }
-    };
+/**
+ * Mock function to check ownership on the blockchain.
+ */
+async function checkOwnership(tokenId, ownerAddress) {
+    console.log(`[MOCK] Checking ownership for Token ID ${tokenId} by ${ownerAddress}`);
+    // Mock logic: Assume owner '0x123...' owns token 101 for demonstration
+    if (tokenId === 101 && ownerAddress === '0x1234567890abcdef') {
+        return true;
+    }
+    return false;
+}
 
-    res.json(mockData);
-});
+// --- API Endpoints ---
 
-app.post('/api/talents/feature/:id', async (req, res) => {
-    const talentId = parseInt(req.params.id);
-    // In a real app: Call smart contract function via Web3 provider
-    console.log(`Attempting to set Talent ${talentId} as Featured.`);
-
+app.get('/api/badges/:id', async (req, res) => {
     try {
-        // Simulate successful blockchain transaction (e.g., calling setTalentAsFeatured)
-        const success = true; // Replace with actual eth_sendTransaction logic
-        if (success) {
-            res.status(200).json({ message: `Talent ${talentId} successfully marked as featured.` });
-        } else {
-            res.status(400).json({ message: "Blockchain transaction failed." });
+        const { id } = req.params;
+        const badgeData = await getBadgeFromChain(parseInt(id));
+
+        if (!badgeData) {
+            return res.status(404).json({ error: 'Badge not found on chain' });
         }
+
+        // In a real scenario, you would fetch the token metadata from IPFS here if needed
+        res.json(badgeData);
+
     } catch (error) {
-        console.error("Feature API Error:", error);
-        res.status(500).json({ message: "Internal server error during feature setting." });
+        console.error("Error fetching badge:", error);
+        res.status(500).json({ error: 'Failed to retrieve badge data' });
     }
 });
+
+app.post('/api/verify', async (req, res) => {
+    const { tokenId, ownerAddress } = req.body;
+
+    if (!tokenId || !ownerAddress) {
+        return res.status(400).json({ error: 'Missing required fields: tokenId and ownerAddress' });
+    }
+
+    try {
+        const isOwner = await checkOwnership(parseInt(tokenId), ownerAddress);
+
+        if (isOwner) {
+            res.json({ verified: true, message: `Certificate for Badge ${tokenId} successfully verified for address ${ownerAddress}.` });
+        } else {
+            res.status(403).json({ verified: false, message: 'Ownership mismatch. Verification failed.' });
+        }
+    } catch (error) {
+        console.error("Error during verification:", error);
+        res.status(500).json({ error: 'Verification process failed' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);

@@ -1,119 +1,121 @@
-// Next.js page displaying the ability to view and request skill badges.
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
-import { useReadContract, useWaitForDataFetching } from 'wagmi';
-import { getContract } from '@/lib/contracts'; // Assume utility to connect to contracts via ethers/wagmi hooks
-import { apiFetch } from '@/lib/api'; // Assume utility for backend calls
+import { api } from '@/lib/api'; // Assume this is configured to point to /api
+import { Badge } from '@/types'; // Define the expected type structure
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-export default function SkillBadgeVerifier() {
-    const { address, isConnected } = useAccount();
-    const [badgeId, setBadgeId] = useState('');
-    const [skillName, setSkillName] = useState('');
-    const [status, setStatus] = useState('pending');
-    const [loading, setLoading] = useState(false);
+export default function HomePage() {
+    const [badges, setBadges] = useState<Badge[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [verificationStatus, setVerificationStatus] = useState<{ tokenId: number, status: string }[]>([]);
+    const [currentTokenId, setCurrentTokenId] = useState<number | null>(null);
 
-    // --- Mock On-Chain Data Fetching (Simulated via useReadContract) ---
-    // In a real scenario, this fetches data directly from the deployed contract.
-    const { data: badgeData, error: contractError } = useReadContract({
-        address: '0xSkillBadgeAddress', // Placeholder Contract Address
-        abi: [...], // Assume ABI is loaded
-        function getSkill(new Date()) // Mock call structure
-    });
+    useEffect(() => {
+        const fetchBadges = async () => {
+            try {
+                // Fetch all available badges (mocking data structure based on backend design)
+                const response = await fetch('/api/badges/101'); // Fetch specific badge for demonstration
+                if (response.ok) {
+                    setBadges([{ ...response.json(), isVerified: false }]);
+                }
+            } catch (error) {
+                console.error("Error fetching badges:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBadges();
+    }, []);
 
-    // --- Backend Interaction (Verification Flow) ---
     const handleVerify = async () => {
-        if (!badgeId || !skillName) return;
+        if (!currentTokenId) return;
 
-        setLoading(true);
+        const ownerAddress = '0x1234567890abcdef'; // Mock user address for verification test
+
         try {
-            const response = await apiFetch('/api/badges/verify', {
+            const response = await fetch('/api/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tokenId: badgeId, skillName: skillName, verifiedByHash: '0xproof...' })
+                body: JSON.stringify({ tokenId: currentTokenId, ownerAddress: ownerAddress })
             });
 
-            if (response.status === 200) {
-                setStatus('success');
-                console.log("Verification successful:", response.data);
-            } else {
-                setStatus('error');
-                console.error("Verification failed:", response.data);
-            }
-        } catch (e) {
-            setStatus('error');
-            console.error("Network or API error:", e);
-        } finally {
-            setLoading(false);
+            const data = await response.json();
+            setVerificationStatus(prev => [...prev, { tokenId: currentTokenId, status: data.message }]);
+
+        } catch (error) {
+            console.error("Verification failed:", error);
+            setVerificationStatus(prev => [...prev, { tokenId: currentTokenId, status: 'Error during verification' }]);
         }
     };
 
-    // --- Render Logic ---
+
+    if (loading) return <div className="p-8 text-center">Loading skill badges...</div>;
+
     return (
-        <div className="p-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-indigo-700 mb-6 border-b pb-2">Verifiable Skill Badge System</h1>
+        <div className="min-h-screen bg-gray-50 p-6 sm:p-10">
+            <header className="mb-8 border-b pb-4">
+                <h1 className="text-4xl font-bold text-gray-900">Verifiable Skill Badges</h1>
+                <p className="text-gray-600 mt-2">On-chain certifications for verifiable skills.</p>
+            </header>
 
-            <div className="max-w-3xl mx-auto bg-white p-6 shadow-lg rounded-lg">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">Certify Your Skill</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {badges.map((badge) => (
+                    <Card key={badge.tokenId} className={`shadow-lg transition duration-300 ${badge.isVerified ? 'border-green-500 bg-white' : 'border-gray-300 bg-white'}`}>
+                        <CardHeader>
+                            <CardTitle className="text-xl font-semibold text-indigo-600">{badge.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-gray-600 mb-4">{badge.description}</p>
+                            {!badge.isVerified ? (
+                                <Button onClick={() => setCurrentTokenId(badge.tokenId)} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                                    Claim & Verify (ID: {badge.tokenId})
+                                </Button>
+                            ) : (
+                                <div className="flex items-center mt-4">
+                                    <span className="text-green-600 font-medium mr-2">Verified!</span>
+                                    <p className="text-sm text-green-700">Certificate is verified on-chain.</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
 
-                <div className="space-y-4">
-                    <div>
-                        <label htmlFor="tokenId" className="block text-sm font-medium text-gray-700">On-Chain Badge ID (e.g., 12345):</label>
-                        <input
-                            id="tokenId"
-                            type="text"
-                            value={badgeId}
-                            onChange={(e) => setBadgeId(e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="skillName" className="block text-sm font-medium text-gray-700">Skill Certified:</label>
-                        <input
-                            id="skillName"
-                            type="text"
-                            value={skillName}
-                            onChange={(e) => setSkillName(e.target.value)}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                        />
-                    </div>
-
-                    <button
-                        onClick={handleVerify}
-                        disabled={loading || !isConnected}
-                        className={`w-full py-2 px-4 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition duration-150 ${
-                            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                        }`}
-                    >
-                        {loading ? 'Verifying...' : 'Request On-Chain Verification'}
-                    </button>
-
-                    {status === 'success' && (
-                         <div className="mt-4 p-3 bg-green-100 text-green-800 border border-green-400 rounded">
-                            ✅ Success! Your verification request has been sent to the backend for indexing. Check status later.
-                         </div>
-                    )}
-
-                    {status === 'error' && (
-                        <div className="mt-4 p-3 bg-red-100 text-red-800 border border-red-400 rounded">
-                            ❌ Error during verification: {status}
-                        </div>
+                {/* Verification Status Section */}
+                <div className="md:col-span-2 lg:col-span-3 mt-10 p-6 border border-indigo-300 rounded-lg bg-indigo-50">
+                    <h2 className="text-2xl font-bold text-indigo-800 mb-4">Verification Portal</h2>
+                    {currentTokenId && (
+                        <>
+                            <p className="mb-4">Attempting to verify Badge ID: {currentTokenId}</p>
+                            <Button onClick={handleVerify} className="w-full bg-red-600 hover:bg-red-700 text-white">
+                                Start On-Chain Verification
+                            </Button>
+                            {verificationStatus.length > 0 && (
+                                <div className="mt-6 space-y-3">
+                                    {verificationStatus.map((status, index) => (
+                                        <div key={index} className={`p-3 rounded-md border ${status.verified ? 'bg-green-100 border-green-500' : 'bg-yellow-100 border-yellow-500'}`}>
+                                            <p className="font-semibold">Status for Token {status.tokenId}:</p>
+                                            <p>{status.status}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
-
-                 {/* Display Simulated On-Chain Status */}
-                 <div className="mt-8 pt-6 border-t">
-                    <h2 className="text-xl font-semibold mb-3 text-gray-800">Simulated Badge Status Check</h2>
-                     {badgeId && (
-                        <div>
-                            <p><strong>Badge ID:</strong> {badgeId}</p>
-                            <p><strong>Simulated Skill:</strong> Advanced Solidity Development</p>
-                            <p><strong>Verification Status:</strong> Pending / Verified (Depends on Backend Indexing)</p>
-                        </div>
-                    )}
-                 </div>
             </div>
         </div>
     );
 }
+
+
+// --- Mock Type Definition (Simulating type inference for demonstration) ---
+interface Badge {
+    tokenId: number;
+    name: string;
+    description: string;
+    isVerified: boolean;
+}
+
+// Note: In a real Next.js setup, the fetch calls would need to be managed within Server Actions or dedicated API routes if they were not mocked client-side.
