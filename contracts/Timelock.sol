@@ -1,88 +1,72 @@
-// SPDX-License-Identifier: MIT
+// exact code implementation here
 pragma solidity ^0.8.20;
 
 /**
  * @title Timelock
- * @notice A basic implementation of a Timelock contract to delay governance actions.
+ * @notice Implements a basic timelock mechanism to delay critical governance actions.
  */
 contract Timelock {
-    address public owner;
-    uint256 public timelock;
-    address public executor;
+    struct TimelockAction {
+        uint256 executionTime; // Timestamp when the action is allowed to execute
+        address target;        // Address to receive the execution call
+        bytes callData;       // The data to be executed (e.g., function signature and arguments)
+    }
 
-    // Events
-    event TimelockUpdated(uint256 newTimelock);
-    event ActionExecuted(uint256 actionId, address executor);
+    mapping(uint256 => TimelockAction) public timelocks;
+    uint256 public nextTimelockId = 1;
+
+    event TimelockSet(uint256 indexed timelockId, uint256 delay);
+    event ActionQueued(uint256 indexed timelockId, address indexed target, bytes callData);
+    event ActionExecuted(uint256 indexed timelockId, bool success);
 
     /**
-     * @dev Constructor for the Timelock contract.
-     * @param _initialTimelock The initial delay period in seconds.
-     * @param _executor The address that will be allowed to execute actions.
+     * @notice Sets a new timelock delay.
+     * @param _delay The number of blocks to wait before execution.
      */
-    constructor(uint256 _initialTimelock, address _executor) {
-        owner = msg.sender;
-        timelock = _initialTimelock;
-        executor = _executor;
-    }
-
-    // --- Modifiers ---
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
-        _;
-    }
-
-    modifier onlyExecutor() {
-        require(msg.sender == executor, "Only the designated executor can call this function");
-        _;
-    }
-
-    // --- Functions ---
-
-    /**
-     * @dev Allows the owner to update the timelock delay.
-     * @param _newTimelock The new delay period in seconds.
-     */
-    function setTimelock(uint256 _newTimelock) public onlyOwner {
-        timelock = _newTimelock;
-        emit TimelockUpdated(timelock);
+    function setTimelock(uint256 _delay) public {
+        require(_delay > 0, "Delay must be positive");
+        timelocks[nextTimelockId] = TimelockAction({
+            executionTime: block.timestamp + _delay,
+            target: address(0), // Target set later during proposal phase
+            callData: bytes(0)
+        });
+        nextTimelockId++;
+        emit TimelockSet(nextTimelockId - 1, _delay);
     }
 
     /**
-     * @dev Allows the owner to set the executor address.
-     * @param _newExecutor The new address for execution.
+     * @notice Proposes an action to be executed after the specified delay.
+     * @param _timelockId The ID of the timelock to control.
+     * @param _target The address to execute the action on.
+     * @param _callData The data (function call) to be executed.
      */
-    function setExecutor(address _newExecutor) public onlyOwner {
-        executor = _newExecutor;
+    function proposeAction(
+        uint256 _timelockId,
+        address _target,
+        bytes memory _callData
+    ) public {
+        require(_timelockId > 0 && _timelockId < nextTimelockId, "Invalid Timelock ID");
+        require(block.timestamp >= timelocks[_timelockId].executionTime, "Action not yet ready");
+
+        timelocks[_timelockId].target = _target;
+        timelocks[_timelockId].callData = _callData;
+
+        emit ActionQueued(_timelockId, _target, _callData);
     }
 
     /**
-     * @dev Allows a user to propose an action (e.g., a transaction to be executed).
-     * @param _action The data payload of the action to be executed later.
+     * @notice Executes the queued action if the time has passed.
+     * @param _timelockId The ID of the timelock to execute.
      */
-    function proposeAction(bytes memory _action) public {
-        require(block.timestamp >= timelock, "Timelock is not active");
-        // In a real system, this would store the proposed action in storage indexed by a unique ID.
-        // For simplicity here, we simulate storing the action based on block timestamp/nonce if possible,
-        // but for a full implementation, mappings to actions would be required.
-        // Placeholder logic: Assume an external mechanism handles logging of proposed actions linked to this address.
-    }
+    function executeAction(uint256 _timelockId) public {
+        require(_timelockId > 0 && _timelockId < nextTimelockId, "Invalid Timelock ID");
+        
+        // Check if execution time has passed
+        require(block.timestamp >= timelocks[_timelockId].executionTime, "Execution not yet permitted");
 
-    /**
-     * @dev Allows the executor to execute a previously proposed action once the timelock has passed.
-     * @param _actionId The ID of the action to execute. (Placeholder: In a real system, this would check if the action is valid and pending execution).
-     */
-    function executeAction(uint256 _actionId) public onlyExecutor {
-        // Real implementation would involve checking storage for proposed actions linked to _actionId
-        // and verifying that block.timestamp >= timelock at the time of proposal.
-
-        emit ActionExecuted(_actionId, msg.sender);
-    }
-
-    /**
-     * @dev Returns the current timelock delay in seconds.
-     */
-    function getTimelock() public view returns (uint256) {
-        return timelock;
+        // Execute the call on the target address
+        (bool success, ) = timelocks[_timelockId].target.call(_timelocks[_timelockId].callData);
+        
+        emit ActionExecuted(_timelockId, success);
     }
 }
