@@ -1,4 +1,4 @@
-// Database schema definition for PostgreSQL persistence (optional, but good for tracking non-immutable metadata)
+// backend/prisma/schema.prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,22 +8,21 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id        String @id @default(cuid())
-  email     String @unique
-  walletAddress String @unique
-  // Links to on-chain data (optional, for index lookups)
-  onchainBadges Json? 
+model ReputationRecord {
+  id          String   @id @default(cuid())
+  address     String   // The address involved (e.g., the user)
+  timestamp   DateTime
+  source      String   // e.g., "Transaction", "Approval"
+  change      Int      // Delta applied to the score
+  counterparty String // Address of the counterparty
 }
 
-model SkillBadgeRecord {
-  id        String @id @default(cuid())
-  tokenId   String @unique
-  ownerAddress String
-  skillName  String
-  isVerified Boolean @default(false)
-  createdAt DateTime @default(now())
-
-  // Optional: Link to the raw contract data hash for external verification proofs
-  contractAddress String? 
+model TrustScore {
+  id          String   @id @default(cuid())
+  address     String   @unique // The address whose score is tracked
+  currentScore Int      // The current calculated composite trust score
+  lastUpdated DateTime @updatedAt
+  records     ReputationRecord[]
 }
+
+// This setup assumes the backend manages the complex, materialized view of scores.
