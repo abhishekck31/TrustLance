@@ -7,13 +7,25 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model HiringOpportunity {
-  id          String    @id @default(cuid())
-  title       String
-  description String
-  location    String
-  salary      Float
-  postedAt    DateTime
-  isPublic    Boolean   @default(true)
-  // In a real scenario, this might link to an address or contract if opportunities are tokenized
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  listings    Listing[]
 }
+
+model Listing {
+  id          Int      @id @default(autoincrement())
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+  title       String
+  price       Float   // Storing price as Float for simplicity, use BigInt/Wei in production
+  sellerAddress String // Address of the seller (for off-chain lookup/registration)
+  status      String   @default("Active") // Active, Sold, Draft
+  createdAt   DateTime @default(now())
+
+  @@index([categoryId])
+}
+
+// Note: In a full system, we would also model Users and potentially Token ownership here.

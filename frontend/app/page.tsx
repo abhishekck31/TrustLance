@@ -1,35 +1,117 @@
-// Main page component to display featured content.
-import FeaturedTalentList from '../components/FeaturedTalentList';
-import { TalentModel } from '../types'; // Assuming types are defined or imported
+'use client';
 
-// Mock data fetch simulating an API call in a real Next.js app using getServerSideProps or Client components fetching data directly
-async function getFeaturedData(): Promise<TalentModel[]> {
-    // In a real application, this would be an actual fetch call to the backend API: /api/talents/featured
-    console.log("Fetching featured data from backend...");
-    
-    // Mock Data for demonstration purposes:
-    return [
-        { id: 101, name: "Alice Developer", description: "Expert in Solidity and DeFi protocols.", isFeatured: true },
-        { id: 102, name: "Bob Designer", description: "Award-winning UI/UX specialist for Web3 interfaces.", isFeatured: true },
-        { id: 103, name: "Charlie Coder", description: "Master of smart contract optimization and security.", isFeatured: true },
-    ];
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useSearchMutation, SearchQuery } from '@tanstack/react-query';
+import { NavigationMenu } from '@/components/ui/navigation-menu';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent,SelectItem, SelectTrigger } from '@/components/ui/select';
+
+interface Category {
+  id: number;
+  name: string;
 }
 
-export default async function HomePage() {
-    const featuredTalents = await getFeaturedData();
+interface Listing {
+  id: number;
+  title: string;
+  price: number;
+  categoryName: string;
+  sellerAddress: string;
+}
 
-    return (
-        <main className="p-8 bg-gray-50 min-h-screen">
-            <header className="mb-12 border-b pb-6">
-                <h1 className="text-5xl font-extrabold text-gray-900 mb-3">Featured Talents</h1>
-                <p className="text-xl text-gray-600">Discover the top, most visible experts in the Web3 space.</p>
-            </header>
+export default function MarketplacePage() {
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-            <section>
-                <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Top Showcase</h2>
-                {/* Display the featured list component */}
-                <FeaturedTalentList talents={featuredTalents} />
-            </section>
-        </main>
-    );
+  const query = useQuery({
+    queryKey: ['marketplaceData'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    },
+  });
+
+  const mutations = useSearchMutation();
+
+  const handleCategoryChange = (categoryId: number) => {
+    setSelectedCategory('category_' + categoryId);
+    setListings([]); // Clear listings when category changes
+  };
+
+  // Fetch Listings based on the selected category
+  useEffect(() => {
+    if (selectedCategory) {
+      fetch(`/api/categories?category=${selectedCategory}`)
+        .then(res => res.json())
+        .then(data => setListings(data))
+        .catch(err => setError('Failed to load listings'));
+    } else {
+      setListings([]);
+    }
+  }, [selectedCategory]);
+
+  if (loading) return <div>Loading Marketplace...</div>;
+  if (error) return <div className="text-red-500">Error: {error}</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <header className="mb-10 border-b pb-4">
+        <h1 className="text-4xl font-bold text-gray-900">TrustLance Marketplace</h1>
+        <p className="text-gray-600 mt-2">Discover and trade digital assets across categories.</p>
+      </header>
+
+      {/* Category Selection */}
+      <div className="mb-8 bg-white p-6 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Browse Categories</h2>
+        <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a Category" />
+          </SelectTrigger>
+          <SelectContent>
+            {query.data?.categories.map((cat) => (
+              <SelectItem key={cat.id} value={String(cat.id)}>
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Listings Display */}
+      {listings.length > 0 ? (
+        <div className="space-y-6">
+          <h2 className="text-3xl font-bold text-gray-800">Listings in {selectedCategory?.split('_')[1] || 'Marketplace'}</h2>
+          {listings.map((listing) => (
+            <div key={listing.id} className="bg-white p-6 rounded-lg shadow border">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-2xl font-bold text-blue-600">{listing.title}</h3>
+                <p className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    listing.status === 'Active' ? 'bg-green-100 text-green-800' : 
+                    listing.status === 'Sold' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {listing.status}
+                </p>
+              </div>
+              <p className="text-gray-600 mb-4">Category: {listing.categoryName}</p>
+              <div className="flex justify-between items-end border-t pt-3">
+                <div className="text-xl font-extrabold text-red-600">
+                  Price: ${listing.price.toFixed(2)} ETH/Token
+                </div>
+                <Button onClick={() => console.log(`View details for listing ${listing.id}`)}>View Details</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center p-10 bg-white rounded-lg shadow">
+          <p className="text-gray-500">No listings found for this category.</p>
+        </div>
+      )}
+    </div>
+  );
 }
