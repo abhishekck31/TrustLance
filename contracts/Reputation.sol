@@ -1,120 +1,91 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 /**
  * @title ReputationDecay
- * @notice Manages reputation scores and implements a time-based decay model.
+ * @notice Manages user reputation scores with a decay mechanism.
  */
-contract ReputationDecay is Ownable {
-    // Struct to hold individual user reputation data
-    struct UserReputation {
-        uint256 score;
-        uint256 lastUpdated;
-        uint256 decayRate; // Decay rate applied per block or time unit
+contract ReputationDecay {
+    address public owner;
+    mapping(address => uint256) public reputationScores;
+    
+    // Decay parameters
+    uint256 public DECAY_RATE = 1000; // Decay in base units (e.g., points per block/time unit)
+
+    event ScoreUpdated(address indexed user, uint256 newScore, uint256 timestamp);
+
+    constructor() {
+        owner = msg.sender;
     }
 
-    mapping(address => UserReputation) public reputations;
-
-    // Event to log reputation changes
-    event ReputationUpdated(address indexed user, uint256 newScore, uint256 timestamp);
-
-    // State variables for decay configuration
-    uint256 public constant DECAY_INTERVAL = 1 days; // Define the time unit for decay check
-    uint256 public constant BASE_DECAY_RATE = 1000000000000; // Example base decay factor (e.g., points per day)
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
 
     /**
      * @notice Initializes a user's reputation score.
-     * @param _user The address whose reputation is being set.
+     * @param _user The address of the user.
      * @param _initialScore The starting reputation value.
-     * @param _decayRate The specific decay rate for this user.
      */
-    function initializeReputation(address _user, uint256 _initialScore, uint256 _decayRate) public onlyOwner {
-        require(_user != address(0), "Cannot initialize zero address");
-        reputations[_user] = UserReputation({
-            score: _initialScore,
-            lastUpdated: block.timestamp,
-            decayRate: _decayRate
-        });
+    function initializeReputation(address _user, uint256 _initialScore) public onlyOwner {
+        reputationScores[_user] = _initialScore;
     }
 
     /**
-     * @notice Grants reputation points to a user.
-     * @dev This function simulates a gain (no decay applied immediately).
-     * @param _user The address receiving the reputation.
-     * @param _amount The amount of reputation to add.
+     * @notice Allows users to accumulate reputation points (gaining reputation).
+     * This is the reward mechanism.
+     * @param _user The user gaining reputation.
+     * @param _points The amount of points gained.
      */
-    function grantReputation(address _user, uint256 _amount) public onlyOwner {
-        require(_user != address(0), "Cannot grant zero address");
-        reputations[_user].score += _amount;
-        reputations[_user].lastUpdated = block.timestamp;
-        emit ReputationUpdated(_user, reputations[_user].score, reputations[_user].lastUpdated);
+    function gainReputation(address _user, uint256 _points) public {
+        // In a real scenario, this would interact with an Oracle or Keeper to determine time elapsed for accurate decay calculation.
+        reputationScores[_user] = reputationScores[_user] + _points;
+        emit ScoreUpdated(_user, reputationScores[_user], block.timestamp);
     }
 
     /**
-     * @notice Penalizes a user by deducting reputation points.
-     * @dev This function simulates a loss (no decay applied immediately).
-     * @param _user The address being penalized.
-     * @param _amount The amount of reputation to subtract.
+     * @notice Calculates and applies the reputation decay based on the time elapsed since the last update.
+     * For simplicity in this example, we apply a simple linear decay factor based on current block timestamp.
+     * NOTE: In production, complex time-based calculations require accurate external timestamps (like Chainlink or Time APIs).
      */
-    function penalizeReputation(address _user, uint256 _amount) public onlyOwner {
-        require(_user != address(0), "Cannot penalize zero address");
-        reputations[_user].score -= _amount;
-        reputations[_user].lastUpdated = block.timestamp;
-        emit ReputationUpdated(_user, reputations[_user].score, reputations[_user].lastUpdated);
-    }
+    function applyDecay() public onlyOwner {
+        uint256 currentTimestamp = uint256(block.timestamp);
 
-    /**
-     * @notice Calculates and applies reputation decay based on elapsed time since the last update.
-     * @dev This is the core decay logic executed periodically or upon score access.
-     * @param _user The address whose reputation is being decayed.
-     */
-    function applyDecay(address _user) public onlyOwner {
-        require(reputations[_user].score > 0, "Reputation cannot be zero for decay calculation");
+        for (address userAddress in reputationScores.keys) {
+            if (reputationScores[userAddress] > 0) {
+                // Calculate elapsed time since the last reported update or since epoch for decay calculation
+                uint256 timeElapsed = currentTimestamp - uint256(block.timestamp); // This is effectively zero in a single execution context unless using historical data storage.
+                
+                // Simplified Decay: Apply decay proportional to accumulated time (simulating passage of time)
+                uint256 decayAmount = (reputationScores[userAddress] * DECAY_RATE) / 1000; // Scale factor adjustment
 
-        uint256 timeElapsed = block.timestamp - reputations[_user].lastUpdated;
-
-        // Calculate the total decay based on elapsed time and individual rate
-        uint256 decayAmount = (timeElapsed / DECAY_INTERVAL) * reputations[_user].decayRate;
-
-        if (decayAmount > 0) {
-            uint256 newScore = reputations[_user].score - decayAmount;
-            reputations[_user].score = newScore;
-            reputations[_user].lastUpdated = block.timestamp; // Update timestamp to reflect the decay moment
-
-            emit ReputationUpdated(_user, newScore, block.timestamp);
+                reputationScores[userAddress] -= decayAmount;
+                
+                // Ensure score doesn't go negative
+                if (reputationScores[userAddress] < 0) {
+                    reputationScores[userAddress] = 0;
+                }
+            }
         }
     }
 
     /**
-     * @notice Retrieves the current reputation score for a user.
-     * @param _user The address to query.
+     * @notice Retrieves the current reputation score for a given address.
+     * @param _user The address whose score is requested.
      * @return The current reputation score.
      */
     function getReputation(address _user) public view returns (uint256) {
-        return reputations[_user].score;
+        return reputationScores[_user];
     }
 
     /**
-     * @notice Retrieves the decay rate for a user.
-     * @param _user The address to query.
-     * @return The specific decay rate.
+     * @notice Allows the owner to adjust the global decay rate.
+     * @param _newRate The new decay rate multiplier.
      */
-    function getDecayRate(address _user) public view returns (uint256) {
-        return reputations[_user].decayRate;
-    }
-
-    /**
-     * @notice Allows the owner to manually trigger a decay calculation for all users.
-     * @dev Useful for backfilling or periodic system maintenance.
-     */
-    function forceDecayAll() public onlyOwner {
-        // In a real application, iterating over all addresses is computationally expensive and usually avoided.
-        // For this example, we iterate over known stored reputation addresses (if manageable) or rely on batch updates.
-        // Since mapping iteration is not directly supported in Solidity without a separate array/mapping of owned addresses,
-        // we will rely on external off-chain orchestration or assume an oracle/manager calls applyDecay individually.
-        // For simplicity within this scope, we leave this as a function placeholder unless the caller provides address lists.
+    function setDecayRate(uint256 _newRate) public onlyOwner {
+        DECAY_RATE = _newRate;
     }
 }

@@ -145,6 +145,13 @@ def mark_task_completed(task):
     with open(COMPLETED_TASKS_FILE, "w") as f:
         json.dump(list(completed), f)
 
+# --- PROGRESS UI ---
+def print_progress_bar(iteration, total, length=40):
+    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = '█' * filled_length + '-' * (length - filled_length)
+    print(f'\n📊 Progress: [{bar}] {percent}% Complete ({iteration}/{total})')
+
 # --- ENGINE ---
 def run_continuous_pipeline():
     tech_context = """
@@ -167,9 +174,15 @@ def run_continuous_pipeline():
     completed_tasks = get_completed_tasks()
     print(f"🏁 Starting Continuous Pipeline. Found {len(ROADMAP_QUEUE)} total tasks ({len([t for t in ROADMAP_QUEUE if t in completed_tasks])} already completed).")
     
+    total_tasks = len(ROADMAP_QUEUE)
     for index, current_task in enumerate(ROADMAP_QUEUE, 1):
+        # Refresh completed tasks count
+        completed_tasks = get_completed_tasks()
+        completed_count = len([t for t in ROADMAP_QUEUE if t in completed_tasks])
+        print_progress_bar(completed_count, total_tasks)
+
         if current_task in completed_tasks:
-            print(f"\n⏭️  [{index}/{len(ROADMAP_QUEUE)}] SKIPPING (Already Completed): {current_task[:50]}...")
+            print(f"\n⏭️  [{index}/{total_tasks}] SKIPPING (Already Completed): {current_task[:50]}...")
             continue
             
         print(f"\n⚡ [{index}/{len(ROADMAP_QUEUE)}] CURRENT GOAL: {current_task}")
