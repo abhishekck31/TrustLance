@@ -1,77 +1,74 @@
-// Next.js page for the Security Monitoring Dashboard.
-'use client';
+// Main dashboard for viewing and managing the fee engine.
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { ArrowUpRight, AlertTriangle, Zap } from 'lucide-react';
+export default function FeeDashboard() {
+    return (
+        <div className="p-8 bg-gray-50 min-h-screen">
+            <header className="mb-8 border-b pb-4">
+                <h1 className="text-4xl font-bold text-gray-900">Platform Fee Engine</h1>
+                <p className="text-lg text-gray-600 mt-2">Dynamic Fee Configuration</p>
+            </header>
 
-interface SecurityAlert {
-  id: number;
-  blockchain: string;
-  address: string;
-  reason: string;
-  amount: string; // Displayed as string for formatting large numbers
-  timestamp: string;
-  is_resolved: boolean;
-}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <Card className="shadow-lg border-t-4 border-blue-500">
+                    <CardHeader>
+                        <CardTitle>Current On-Chain Fee</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <p className="text-xl font-semibold text-blue-600">1.25% (Mock)</p>
+                        <p>Basis Points: 1250</p>
+                        <p className="text-sm text-gray-500 mt-2">Source: Blockchain State</p>
+                    </CardContent>
+                </Card>
 
-export default function SecurityDashboard() {
-  const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+                <Card className="shadow-lg border-t-4 border-green-500">
+                    <CardHeader>
+                        <CardTitle>Off-Chain Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <p className="text-xl font-semibold text-green-600">1.00% (Last Sync)</p>
+                        <p>Basis Points: 100</p>
+                        <p className="text-sm text-gray-500 mt-2">Source: Database Record</p>
+                    </CardContent>
+                </Card>
 
-  useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/alerts');
-        setAlerts(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch data from the backend.');
-        setLoading(false);
-      }
-    };
-    fetchAlerts();
-  }, []);
-
-  if (loading) return <div className="p-8 text-center text-lg font-medium">Loading security data...</div>;
-  if (error) return <div className="p-8 text-red-600 bg-red-50 border border-red-300 rounded-lg mt-4">{error}</div>;
-
-  return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <header className="mb-8 pb-4 border-b border-yellow-500">
-        <h1 className="text-4xl font-bold text-white flex items-center gap-3">
-          <Zap className="w-8 h-8 text-yellow-500" /> Security Monitoring Dashboard
-        </h1>
-        <p className="text-gray-400 mt-2">Real-time tracking of suspicious blockchain activity</p>
-      </header>
-
-      <div className="space-y-6">
-        {alerts.length === 0 ? (
-          <div className="bg-gray-800 p-6 rounded-lg text-center border border-gray-700">
-            <AlertTriangle className="w-12 h-12 mx-auto text-yellow-500 mb-3" />
-            <p className="text-gray-400">No suspicious alerts found at this time.</p>
-          </div>
-        ) : (
-          alerts.map((alert) => (
-            <div key={alert.id} className={`bg-gray-800 p-5 rounded-lg shadow-xl border-l-4 ${alert.is_resolved ? 'border-green-500' : 'border-red-500'}`}>
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-semibold text-white truncate">Alert ID: #{alert.id}</h2>
-                <span className={`px-3 py-1 text-xs font-medium rounded-full ${alert.is_resolved ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                  {alert.is_resolved ? 'Resolved' : 'Active'}
-                </span>
-              </div>
-              <p className="text-sm text-gray-300 mt-1">Blockchain: {alert.blockchain}</p>
-              <div className="mt-3 space-y-2 text-gray-300 border-t border-gray-700 pt-3">
-                <p><strong className="text-yellow-400">Address:</strong> {alert.address}</p>
-                <p><strong className="text-yellow-400">Reason:</strong> {alert.reason}</p>
-                <p><strong className="text-red-400">Amount:</strong> {alert.amount.toLocaleString()}</p>
-                <p><strong className="text-gray-500">Timestamp:</strong> {new Date(alert.timestamp).toLocaleString()}</p>
-              </div>
+                <Card className="shadow-lg border-t-4 border-yellow-500">
+                    <CardHeader>
+                        <CardTitle>Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p>Use the panel below to configure new fees.</p>
+                        <Link href="/admin/set-fee" className="block w-full text-center py-2 px-4 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition">
+                            Configure New Fee (Admin)
+                        </Link>
+                    </CardContent>
+                </Card>
             </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
+
+            <div className="bg-white p-6 rounded-lg shadow-xl border">
+                <h2 className="text-2xl font-semibold mb-4">Dynamic Update Panel</h2>
+                <p className="mb-4 text-sm text-gray-700">Enter the desired fee in Basis Points (e.g., 500 for 5%) and submit to trigger the transaction.</p>
+
+                <form action="/api/update-fee" method="post">
+                    <div className="flex items-center space-x-4 mb-4">
+                        <label htmlFor="newFeeBPS" className="block text-sm font-medium text-gray-700">New Fee (Basis Points):</label>
+                        <input type="number" id="newFeeBPS" name="newFeeBPS" required 
+                               placeholder="e.g., 500" 
+                               className="mt-1 block w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               min="1"
+                               max="10000" />
+                    </div>
+                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-150">
+                        Execute Fee Update Transaction
+                    </Button>
+                </form>
+
+                <div id="result" className="mt-6 p-4 border-2 border-dashed rounded-lg hidden">
+                    {/* Results will be injected here */}
+                </div>
+            </div>
+        </div>
+    );
 }

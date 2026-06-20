@@ -1,21 +1,20 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
+// Define the database schema for persistence, even if the core logic is on-chain.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model AuditFinding {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  severity    String   // e.g., Critical, High, Medium, Low
-  status      String   // e.g., Open, In Progress, Resolved, Closed
-  findings    Json     // Detailed findings structure (can be complex)
-  reportDate  DateTime
-  submittedBy String // User who submitted the finding
-  statusHistory Json // History of status changes
-  createdAt   DateTime @default(now())
+generator client {
+  provider = "prisma-client-js"
 }
+
+// Schema to store administrative configurations or off-chain logs related to fees
+model PlatformConfig {
+  id          Int      @id @default(autoincrement())
+  feeBPS      Int      // Fee in Basis Points
+  updatedAt   DateTime @updatedAt
+  ownerAddress String // Stored as string for flexibility if complex
+}
+
+// Example setup for configuration storage (optional, mainly for administrative display)
+// In a production system, this might synchronize state from the blockchain.

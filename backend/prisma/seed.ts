@@ -1,30 +1,22 @@
+// Seed data for initial platform configuration
 import { PrismaClient } from '@prisma/client';
-import { faker } from '@faker-js/faker';
+import { crypto } from 'crypto';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding Audit Findings...');
+  console.log('Seeding PlatformConfig...');
 
-  const findings = [];
-
-  // Generate 10 sample findings
-  for (let i = 1; i <= 10; i++) {
-    findings.push({
-      title: faker.lorem.words(3) + " Vulnerability",
-      description: faker.lorem.sentence(),
-      severity: faker.helpers.arrayElement(['Critical', 'High', 'Medium', 'Low']),
-      status: faker.helpers.arrayElement(['Open', 'In Progress', 'Resolved', 'Closed']),
-      reportedBy: faker.person.fullName(),
-      dateReported: faker.date.past(),
-    });
-  }
-
-  await prisma.auditFinding.createMany({
-    data: findings,
+  // Initialize with a default fee (e.g., 100 BPS = 1%)
+  await prisma.platformConfig.create({
+    data: {
+      feeBPS: 100,
+      updatedAt: new Date(),
+      ownerAddress: "0xAdminWalletAddressPlaceholder" // Placeholder, actual owner is set on chain
+    },
   });
 
-  console.log(`Seeded ${findings.length} audit findings.`);
+  console.log('Seeding complete.');
 }
 
 main()
