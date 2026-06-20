@@ -1,65 +1,73 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import dotenv from 'dotenv';
 
 const app = express();
+dotenv.config();
+
+// Initialize Prisma Client
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// --- Cohort Analytics Endpoints ---
+// --- AI Assistant Endpoints ---
 
 /**
- * Endpoint to calculate monthly retention cohorts.
- * This is the core analytics function.
+ * Endpoint to get a proposal by ID (Simulated)
  */
-app.get('/analytics/cohort-retention', async (req, res) => {
-  try {
-    // 1. Identify Cohorts: Group users by their registration month.
-    // 2. Calculate Retention: Determine how many of those users performed an action in subsequent months.
-    
-    // Placeholder implementation: In a real scenario, this involves complex SQL aggregation (e.g., using date math).
-    const cohortData = await prisma.$queryRaw`
-      WITH user_cohort AS (
-        SELECT 
-          DATE_TRUNC('month', T.timestamp) as cohort_month,
-          T.user_id
-        FROM "Transaction" T
-        GROUP BY 1, T.user_id
-      ),
-      retention_data AS (
-        SELECT
-          uc.cohort_month,
-          COUNT(DISTINCT CASE 
-            WHEN DATE_TRUNC('month', T.timestamp) = (uc.cohort_month + INTERVAL '1 month') THEN T.user_id
-            ELSE NULL
-          END) AS retained_users
-        FROM user_cohort uc
-        JOIN "Transaction" T ON T.timestamp > (uc.cohort_month - INTERVAL '1 month') AND T.timestamp < (uc.cohort_month + INTERVAL '2 months')
-        GROUP BY 1
-      )
-      SELECT 
-        cohort_month,
-        COUNT(DISTINCT user_id) AS cohort_size,
-        SUM(retained_users) AS retained_count
-      FROM retention_data
-      GROUP BY cohort_month
-      ORDER BY cohort_month;
-    `;
+app.get('/proposals/:id', async (req, res) => {
+    try {
+        const proposal = await prisma.proposal.findUnique({ where: { id: parseInt(req.params.id) } });
+        if (!proposal) {
+            return res.status(404).json({ error: 'Proposal not found' });
+        }
+        res.json(proposal);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch proposal' });
+    }
+});
 
-    // For simplicity in this example, we return aggregated results directly from the raw query.
-    res.json({ message: "Cohort retention data calculated successfully", data: cohortData.rows });
+/**
+ * Endpoint to trigger the AI summarization process (Mocked LLM call)
+ * In a real scenario, this would call an external service like OpenAI or Gemini.
+ */
+app.post('/proposals/:id/summarize', async (req, res) => {
+    const proposalId = parseInt(req.params.id);
 
-  } catch (error) {
-    console.error("Error calculating cohort retention:", error);
-    res.status(500).json({ error: "Failed to calculate cohort retention." });
-  }
+    try {
+        // 1. Fetch the full text from the database
+        const proposal = await prisma.proposal.findUnique({ where: { id: proposalId } });
+
+        if (!proposal) {
+            return res.status(404).json({ error: 'Proposal not found' });
+        }
+
+        // 2. Simulate AI Summarization Logic (Replace this block with actual LLM API call)
+        const fullText = proposal.body;
+        let summary = `[AI Summary for Proposal ID ${proposalId}]: This is a simulated summary based on the full text of the proposal: "${fullText.substring(0, 50)}..."`;
+
+        // Simulate processing delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // 3. Update the database with the generated summary
+        await prisma.proposal.update({
+            where: { id: proposalId },
+            data: { aiSummary: summary }
+        });
+
+        res.json({ message: 'Summary successfully generated and saved.', summary: summary });
+
+    } catch (error) {
+        console.error('Error during summarization:', error);
+        res.status(500).json({ error: 'Failed to process request or generate summary' });
+    }
 });
 
 
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`TrustLance AI Assistant Backend running on port ${PORT}`);
 });

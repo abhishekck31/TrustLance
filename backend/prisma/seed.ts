@@ -1,26 +1,25 @@
 import { PrismaClient } from '@prisma/client';
-import { faker } from '@faker-js/faker';
+import { hash } from 'crypto';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
-
-  // Example of seeding initial data (simulating a contract being added)
-  await prisma.contractRiskAssessment.create({
+  await prisma.proposal.create({
     data: {
-      contractAddress: '0xabc123def456', // Placeholder address
-      ownerAddress: faker.internet.userName(),
-      deployTime: Date.now() - Math.floor(Math.random() * 86400000), // Within last 24 hours
-      contractName: 'SuspiciousToken_' + faker.finance.word(),
-      riskScore: Math.floor(Math.random() * 100),
-      isSuspicious: Math.random() > 0.8,
+      title: "Initial AI Governance Proposal",
+      description: "This is the detailed proposal text for governance.",
+      status: "DRAFT",
+      body: "The full text of the complex governance proposal that needs summarization by the AI assistant.",
+      aiSummary: null,
     },
   });
-
-  console.log('Seeding complete.');
+  console.log('Database seeded successfully.');
 }
 
-main().catch(e => {
-  console.error('Error during seeding:', e);
-});
+main()
+  .catch(e => {
+    console.error('Error during seeding:', e);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

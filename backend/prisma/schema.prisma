@@ -1,38 +1,19 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// --- Data Models reflecting the Solidity contracts structure for internal DB management ---
-
-model Freelancer {
-  id            Int      @id @default(autoincrement())
-  name          String
-  skillSet      String // Stored raw string, matching the contract representation
-  ownerAddress  String   @unique
+generator client {
+  provider = "prisma-client-generator"
 }
 
-model Job {
-  id            Int      @id @default(autoincrement())
-  title         String
-  description   String
-  requiredSkillsHash String // Placeholder for complex indexing in a real system
-  isCompleted   Boolean  @default(false)
+model Proposal {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  status      String // e.g., DRAFT, ACTIVE, EXECUTED
+  body        String // Full text of the proposal description
+  aiSummary   String? // The AI-generated summary
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updated()
 }
-
-// To simulate the AI processing result storage
-model Recommendation {
-    id        Int      @id @default(autoincrement())
-    freelancerId Int
-    jobId       Int
-    score       Int
-    createdAt DateTime @default(now())
-    @@unique([freelancerId, jobId])
-}
-
-// Note: In a real setup, we would use external data sources or indexed vectors for the AI matching.
-// The Prisma layer manages the persistence of these structured relationships.
