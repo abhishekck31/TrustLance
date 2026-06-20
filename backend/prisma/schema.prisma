@@ -7,50 +7,42 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Customer {
-  id        Int      @id @default(autoincrement())
-  walletAddress String @unique
-  name      String?
-  createdAt DateTime @default(now())
-  subscriptions Subscription[]
+model Freelancer {
+  id            String    @id @default(cuid())
+  name          String
+  bio           String
+  rating        Int       @default(0)
+  totalProjects Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
 }
 
-model Subscription {
-  id          Int      @id @default(autoincrement())
-  customerId Int
-  planName    String
-  startDate   DateTime @default(now())
-  monthlyPrice Float // The recurring revenue amount
-  status      String   // e.g., 'active', 'canceled', 'trial'
-  createdAt   DateTime @default(now())
-  customer    Customer @relation(fields: [customerId], references: [id])
+model Project {
+  id             String    @id @default(cuid())
+  title          String
+  description    String
+  budget         Int
+  completed      Boolean   @default(false)
+  isPublished    Boolean   @default(false)
+  creatorId      String
+  creator        Freelancer @relation(fields: [creatorId], references: [id])
+  createdAt      DateTime  @default(now())
 }
 
-// Optional: A table for aggregated monthly revenue snapshots if performance requires pre-calculation
-model MonthlyRevenueSnapshot {
-  id          Int      @id @default(autoincrement())
-  month       String   @unique // Format YYYY-MM
-  totalMRR    Float    // Total MRR for that month
-  reportedAt  DateTime @default(now())
+// Additional table for advanced search filtering (optional but useful for complex queries)
+model FilterCriteria {
+  id          String @id @default(cuid())
+  name        String
+  minRating   Int?
+  maxBudget   Int?
+  category    String? // e.g., 'WebDev', 'Design'
+  searchTerms String
 }
 
-// Example of an aggregate calculated directly from subscriptions (can be handled in service layer too)
-model MonthlyMetric {
-  id            Int      @id @default(autoincrement())
-  month         String   @unique // YYYY-MM
-  totalMRR      Float
-  newSubscriptions Int
-  churnedCustomers Int
-  reportedAt    DateTime @default(now())
+// Placeholder for demonstration purposes, actual data would be populated via indexers/queries
+generator filterQueries {
+  provider = "prisma-client-js"
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELED
-  TRIAL
-  PAST_DUE
-}
-
-// Example relation setup for clarity (already implied by the above)
-// model Customer { ... }
-// model Subscription { customerId Int, customer Customer @relation(fields: [customerId], references: [id]) }
+@@index([name])
+@@index([category])

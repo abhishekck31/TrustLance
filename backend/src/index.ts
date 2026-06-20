@@ -1,49 +1,74 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 import cors from 'cors';
-import { BigInt } from 'bigint';
 
-const prisma = new PrismaClient();
+// Load environment variables
+dotenv.config();
+
 const app = express();
-const PORT = 3001;
+const prisma = new PrismaClient();
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// --- API Endpoints ---
+// --- Freelancer Discovery Routes ---
 
 /**
- * Endpoint to fetch the total treasury holdings.
+ * GET /api/freelancers
+ * Retrieves all freelancers (basic listing)
  */
-app.get('/api/treasury/holdings', async (req, res) => {
+app.get('/api/freelancers', async (req, res) => {
   try {
-    const holdings = await prisma.TreasuryHolding.findMany();
-    res.json(holdings);
+    const freelancers = await prisma.freelancer.findMany({
+      select: { id: true, name: true, rating: true, bio: true },
+      where: { isActive: true }
+    });
+    res.json(freelancers);
   } catch (error) {
-    console.error('Error fetching holdings:', error);
-    res.status(500).json({ error: 'Failed to fetch treasury holdings' });
+    console.error("Error fetching freelancers:", error);
+    res.status(500).json({ error: 'Failed to retrieve freelancers' });
   }
 });
 
 /**
- * Endpoint to fetch all recorded treasury flows.
+ * GET /api/freelancers/search
+ * Advanced search and filtering functionality.
+ * Example usage: ?name=John&minRating=4&category=WebDev
  */
-app.get('/api/treasury/flows', async (req, res) => {
+app.get('/api/freelancers/search', async (req, res) => {
+  const { name, minRating, category } = req.query;
+
   try {
-    const flows = await prisma.TreasuryFlow.findMany();
-    res.json(flows);
+    let whereClause: any = {};
+
+    if (name) {
+      whereClause.name = { contains: name, mode: 'insensitive' };
+    }
+    if (minRating) {
+      whereClause.rating = { gte: parseInt(minRating) };
+    }
+    if (category) {
+      whereClause.category = category;
+    }
+
+    const freelancers = await prisma.freelancer.findMany({
+      where: whereClause,
+      select: { id: true, name: true, rating: true, bio: true }
+    });
+
+    res.json(freelancers);
+
   } catch (error) {
-    console.error('Error fetching flows:', error);
-    res.status(500).json({ error: 'Failed to fetch treasury flows' });
+    console.error("Error during freelancer search:", error);
+    res.status(500).json({ error: 'Failed to perform search' });
   }
 });
 
-// Basic health check
-app.get('/', (req, res) => {
-    res.send('TrustLance DAO Treasury API is running.');
-});
 
+const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
