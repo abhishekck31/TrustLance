@@ -1,18 +1,24 @@
-import type { Config } from 'tailwindcss';
+// Ensuring custom transitions are handled, though primarily relying on Tailwind defaults enhanced by component logic.
+import type { Config } from "tailwindcss";
 
 const config: Config = {
   content: [
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    "./pages/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
-      colors: {
-        'trust-indigo': '#4f46e5', // Custom color for branding
-        'trust-gray': '#f3f4f6',
+      // Custom utility for subtle pulse/loading effect (if needed globally)
+      animation: {
+        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+      },
+      transitionProperty: {
+        'transform': 'transform',
       },
     },
   },
   plugins: [],
 };
+
+export default config;
