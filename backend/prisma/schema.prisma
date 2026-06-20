@@ -1,3 +1,5 @@
+// Prisma Schema definition for the backend data persistence
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,15 +9,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Model to represent the Project NFT linkage and PoW state in the database
-model Project {
-  id            Int      @id @default(autoincrement())
-  projectId     String   @unique // Corresponds to the Blockchain Project ID
-  name          String
-  status        String   @default("Pending") // Pending, Completed
-  proofHash     String?  // The hash linked to the on-chain PoW proof
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model PlatformHealthData {
+  id              Int      @id @default(autoincrement())
+  platformName    String   @unique
+  tvl             BigInt    // Total Value Locked (using BigInt for large numbers)
+  totalDisputes   BigInt
+  completedDisputes BigInt
+  disputeCompletionRate Float // Percentage 0.0 to 100.0
+  updatedAt       DateTime @updatedAt
 
-  @@map("projects")
+  @@index([platformName])
 }

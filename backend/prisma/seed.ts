@@ -1,49 +1,34 @@
+// Seed data for initial dashboard load (mocking the calculated health metrics)
 import { PrismaClient } from '@prisma/client';
-import { faker } from '@faker-js/faker';
+import { BigInt } from 'bigint';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('Seeding Platform Health Data...');
 
-  // Create initial users (assuming we have some way to map these to wallet addresses later)
-  const user1 = await prisma.user.upsert({
-    where: { email: 'user1@example.com' },
-    update: { name: 'Alice' },
-    create: { email: 'user1@example.com' }
-  });
+  // Mock data for a specific platform
+  const mockData = {
+    platformName: 'TrustLance Platform',
+    tvl: BigInt(154321098765), // Example TVL in smallest units (e.g., Wei * 10^18)
+    totalDisputes: BigInt(450),
+    completedDisputes: BigInt(360),
+  };
 
-  const user2 = await prisma.user.upsert({
-    where: { email: 'user2@example.com' },
-    update: { name: 'Bob' },
-    create: { email: 'user2@example.com' }
-  });
-
-  // Create initial jobs
-  const job1 = await prisma.job.create({
-    data: { title: 'Senior Solidity Developer', description: 'Expert in smart contracts and DeFi.' }
-  });
-
-  const job2 = await prisma.job.create({
-    data: { title: 'Frontend Next.js Engineer', description: 'Building scalable user interfaces.' }
-  });
-
-  // Save bookmarks for Alice (user1)
-  await prisma.bookmark.create({
-    data: {
-      userId: user1.id,
-      jobId: job1.id,
-      jobTitle: job1.title,
-      savedAt: new Date(),
+  await prisma.platformHealthData.upsert({
+    where: { platformName: mockData.platformName },
+    update: {
+      tvl: mockData.tvl,
+      totalDisputes: mockData.totalDisputes,
+      completedDisputes: mockData.completedDisputes,
+      disputeCompletionRate: (mockData.completedDisputes * 100n) / mockData.totalDisputes,
     },
-  });
-
-  await prisma.bookmark.create({
-    data: {
-      userId: user1.id,
-      jobId: job2.id,
-      jobTitle: job2.title,
-      savedAt: new Date(),
+    create: {
+      platformName: mockData.platformName,
+      tvl: mockData.tvl,
+      totalDisputes: mockData.totalDisputes,
+      completedDisputes: mockData.completedDisputes,
+      disputeCompletionRate: (mockData.completedDisputes * 100n) / mockData.totalDisputes,
     },
   });
 
