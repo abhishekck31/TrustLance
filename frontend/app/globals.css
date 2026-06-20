@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Customizing initial light theme settings if needed, though Tailwind handles the dark prefix automatically */
+body {
+  @apply bg-gray-50 text-gray-900; /* Base light theme styles */
+}
+
+/* Explicitly define dark mode styles using the 'dark:' prefix managed by the context */
+.dark {
+  /* Define specific colors for dark mode if Tailwind defaults are insufficient, though usually unnecessary */
+  /* bg-gray-900 text-gray-100 */
+}
+
+/* Fallback/Base application of theme setup */
+html {
+    scroll-behavior: smooth;
+}
