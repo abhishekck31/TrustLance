@@ -1,157 +1,115 @@
 'use client';
 
-import React from 'react';
-import { ArrowRight, Clock, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { ArrowUpRight, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { Card, CardContent, Typography, Divider } from '@/components/ui/ui'; // Assuming shadcn components setup
+import { Separator } from '@/components/ui/separator';
 
-// --- Mock Data Types (Based on expected backend response) ---
-interface DisputedProject {
-  id: string;
-  name: string;
-  status: 'Disputed' | 'Voting';
-  currentVotes: number;
+interface Finding {
+  id: number;
+  title: string;
+  description: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  reportedBy: string;
+  dateReported: string;
 }
 
-interface VotingTimeline {
-  projectId: string;
-  projectName: string;
-  votesRemaining: number;
-  endDate: string;
-}
+export default function AuditFindingsDashboard() {
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-interface StakingMetric {
-  projectId: string;
-  stakedAmount: number;
-  totalReward: number;
-}
-
-// --- Mock Data Fetching Function (Simulating API call) ---
-async function fetchDashboardData(): Promise<{ disputedProjects: DisputedProject[], openVotingTimelines: VotingTimeline[], stakingPoolMetrics: StakingMetric[] }> {
-  // In a real application, this would be an actual fetch('/api/dashboard') call.
-  // We use mock data here to demonstrate the UI structure execution.
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
-
-  return {
-    disputedProjects: [
-      { id: 'p1', name: 'QuantumLeap Token Dispute', status: 'Voting', currentVotes: 15 },
-      { id: 'p2', name: 'AI Ethics Protocol Vote', status: 'Disputed', currentVotes: 42 },
-    ],
-    openVotingTimelines: [
-      { projectId: 'p1', projectName: 'QuantumLeap Token Dispute', votesRemaining: 5, endDate: '2024-08-30' },
-      { projectId: 'p2', projectName: 'AI Ethics Protocol Vote', votesRemaining: 10, endDate: '2024-09-15' },
-    ],
-    stakingPoolMetrics: [
-      { projectId: 'p1', stakedAmount: 150000, totalReward: 5000.50 },
-      { projectId: 'p2', stakedAmount: 85000, totalReward: 2100.75 },
-    ],
+  const fetchFindings = async () => {
+    try {
+      // Assuming the backend runs on port 3001 (adjust as necessary)
+      const response = await axios.get('http://localhost:3001/api/findings');
+      setFindings(response.data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Failed to load audit findings. Ensure the backend is running.");
+      setLoading(false);
+    }
   };
-}
 
-// --- Component Functions ---
+  useEffect(() => {
+    fetchFindings();
+  }, []);
 
-const DisputedProjectsCard: React.FC<{ project: DisputedProject }> = ({ project }) => (
-  <div className="bg-white p-6 rounded-xl shadow border border-red-200 transition duration-300 hover:shadow-lg">
-    <h3 className="text-xl font-bold text-gray-800 mb-2">{project.name}</h3>
-    <p className={`text-sm font-medium mb-4 ${project.status === 'Voting' ? 'text-blue-600' : 'text-red-600'}`}>
-      Status: {project.status}
-    </p>
-    <div className="space-y-2">
-      <p>Current Votes: <span className="font-semibold text-lg text-indigo-600">{project.currentVotes}</span></p>
-      <button className="w-full mt-4 bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition">
-        View Details & Vote
-      </button>
-    </div>
-  </div>
-);
+  if (loading) {
+    return <div className="p-8 text-center text-lg">Loading Audit Findings...</div>;
+  }
 
-const VotingTimelineCard: React.FC<{ timeline: VotingTimeline }> = ({ timeline }) => (
-  <div className="bg-white p-5 rounded-xl shadow border border-blue-200 flex justify-between items-center">
-    <div>
-      <h4 className="text-lg font-semibold text-gray-800">{timeline.projectName}</h4>
-      <p className="text-sm text-gray-600 mt-1">Project ID: {timeline.projectId}</p>
-    </div>
-    <div className="text-right">
-      <div className="flex items-center text-blue-600 font-medium mb-2"><Clock className="w-5 h-5 mr-2" /> Timeline Ends:</div>
-      <span className="text-xl font-bold">{timeline.endDate}</span>
-    </div>
-  </div>
-);
-
-const StakingMetricsCard: React.FC<{ metric: StakingMetric }> = ({ metric }) => (
-  <div className="bg-white p-5 rounded-xl shadow border border-green-200 flex justify-between items-center">
-    <div>
-      <h4 className="text-lg font-semibold text-gray-800">Staking Pool: {metric.projectId}</h4>
-      <p className="text-sm text-gray-600 mt-1">Total Staked: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(metric.stakedAmount)}</p>
-    </div>
-    <div className="text-right">
-      <div className="flex items-center text-green-600 font-medium mb-2"><DollarSign className="w-5 h-5 mr-2" /> Total Reward:</div>
-      <span className="text-xl font-bold text-green-700">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(metric.totalReward)}</span>
-    </div>
-  </div>
-);
-
-
-// --- Main Dashboard Page ---
-
-export default async function JurorDashboard() {
-  const data = await fetchDashboardData();
+  if (error) {
+    return <div className="p-8 text-center text-red-600">Error: {error}</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <header className="mb-10 border-b pb-4">
-        <h1 className="text-4xl font-extrabold text-gray-900 flex items-center">
-          TrustLance Juror Dashboard
-        </h1>
-        <p className="text-gray-600 mt-2">Your portal for disputed projects, voting timelines, and staking metrics.</p>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <header className="mb-8 pb-4 border-b">
+        <div className="flex items-center space-x-3">
+          <AlertTriangle className="w-8 h-8 text-red-500" />
+          <Typography variant="h1" className="text-3xl font-bold text-gray-900">Security Audit Tracker</Typography>
+        </div>
+        <p className="text-gray-600 mt-2">Monitor and track the status of all security review findings across the platform.</p>
       </header>
 
-      {/* Section 1: Disputed Projects */}
-      <section className="mb-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Disputed Projects</h2>
-        {data.disputedProjects.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {data.disputedProjects.map(project => (
-              <DisputedProjectsCard key={project.id} project={project} />
-            ))}
-          </div>
+      <div className="space-y-6">
+        {findings.length === 0 ? (
+          <Card className="border-dashed border-2 border-gray-300 p-6 text-center bg-white">
+            <Typography variant="h5">No Audit Findings Found</Typography>
+            <p>No security findings are currently tracked in the system.</p>
+          </Card>
         ) : (
-          <div className="text-center p-10 bg-white rounded-xl shadow">
-            <p className="text-xl text-gray-500">No disputed projects currently listed.</p>
-          </div>
-        )}
-      </section>
+          findings.map((finding) => (
+            <Card key={finding.id} className="shadow-md hover:shadow-lg transition duration-300 border-l-4" style={{ borderColor: finding.severity === 'Critical' ? 'red' : finding.severity === 'High' ? 'orange' : finding.severity === 'Medium' ? 'yellow' : 'blue' }}>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800">{finding.title}</h2>
+                    <p className="text-sm text-gray-500 mt-1 flex items-center space-x-3">
+                        <Clock className='w-4 h-4'/> Reported: {new Date(finding.dateReported).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 text-xs font-medium rounded-full uppercase ${
+                    finding.severity === 'Critical' ? 'bg-red-100 text-red-700' :
+                    finding.severity === 'High' ? 'bg-orange-100 text-orange-700' :
+                    finding.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {finding.severity}
+                  </span>
+                </div>
 
-      {/* Section 2: Open Voting Timelines */}
-      <section className="mb-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Open Voting Timelines</h2>
-        {data.openVotingTimelines.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {data.openVotingTimelines.map(timeline => (
-              <VotingTimelineCard key={timeline.projectId} timeline={timeline} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center p-10 bg-white rounded-xl shadow">
-            <p className="text-xl text-gray-500">No active voting timelines found.</p>
-          </div>
-        )}
-      </section>
+                <p className="text-gray-600 border-t pt-3">{finding.description}</p>
 
-      {/* Section 3: Staking Pool Metrics */}
-      <section>
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Staking Pool Metrics</h2>
-        {data.stakingPoolMetrics.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2">
-            {data.stakingPoolMetrics.map(metric => (
-              <StakingMetricsCard key={metric.projectId} metric={metric} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center p-10 bg-white rounded-xl shadow">
-            <p className="text-xl text-gray-500">No staking pool metrics found.</p>
-          </div>
-        )}
-      </section>
+                <div className="flex justify-between items-center pt-2">
+                  <div className="flex items-center space-x-4">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                        finding.status === 'Open' ? 'bg-yellow-500 text-white' :
+                        finding.status === 'In Progress' ? 'bg-blue-500 text-white' :
+                        finding.status === 'Resolved' ? 'bg-green-500 text-white' :
+                        'bg-gray-400 text-white'
+                    }`}>
+                      Status: {finding.status}
+                    </span>
+                  </div>
 
+                  {finding.resolutionDate && (
+                    <div className="flex items-center space-x-3">
+                        <CheckCircle className='w-5 h-5 text-green-600'/>
+                        <span className="text-sm font-medium text-gray-700">Resolved: {new Date(finding.resolutionDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-// Define the schema for storing security alerts and monitoring data.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,12 +7,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model SecurityAlert {
+model AuditFinding {
   id          Int      @id @default(autoincrement())
-  blockchain  String   // e.g., "Ethereum" or "Polygon"
-  address     String   // The address involved in the activity
-  reason      String   // Description of the suspicious activity
-  amount      BigInt    // Value related to the activity
-  timestamp   DateTime @default(now())
-  is_resolved Boolean  @default(false)
+  title       String   @db.VarChar(255)
+  description String   @db.Text
+  severity    String   // e.g., Critical, High, Medium, Low
+  status      String   // e.g., Open, In Progress, Resolved, Closed
+  reportedBy  String   // User or team responsible
+  dateReported DateTime @default(now())
+  resolutionDate DateTime?
 }

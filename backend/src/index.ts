@@ -1,54 +1,45 @@
-// Main entry point for the Node.js application setup and Express server.
 import express from 'express';
-import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import cors from 'cors';
 
-const prisma = new PrismaClient();
 const app = express();
-const PORT = process.env.PORT || 3001;
+const prisma = new PrismaClient();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health Check
-app.get('/', (req, res) => {
-  res.status(200).send('TrustLance Security Monitoring Backend is running.');
-});
-
-// API Endpoints for Dashboard Data
-app.get('/api/alerts', async (req, res) => {
+// API Routes for Audit Findings Tracker
+app.get('/api/findings', async (req, res) => {
   try {
-    const alerts = await prisma.securityAlert.findMany({
-      orderBy: { timestamp: 'desc' },
-      take: 100, // Limit results for dashboard performance
+    const findings = await prisma.auditFinding.findMany({
+      orderBy: { dateReported: 'desc' },
+      include: {
+        reportedBy: true,
+      }
     });
-    res.json(alerts);
+    res.status(200).json(findings);
   } catch (error) {
-    console.error('Error fetching alerts:', error);
-    res.status(500).json({ error: 'Failed to retrieve security alerts' });
+    console.error('Error fetching audit findings:', error);
+    res.status(500).json({ error: 'Failed to fetch audit findings' });
   }
 });
 
-// Monitoring Simulation Endpoint (Simulates receiving blockchain events for logging)
-app.post('/api/log-activity', async (req, res) => {
+// Example endpoint for creating a finding (for completeness)
+app.post('/api/findings', async (req, res) => {
     try {
-        const { address, reason, amount, blockchain } = req.body;
-        if (!address || !reason || !amount || !blockchain) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        await prisma.securityAlert.create({
-            data: { address, reason, amount: BigInt(amount), blockchain }
+        const newFinding = await prisma.auditFinding.create({
+            data: req.body,
         });
-
-        res.status(201).json({ message: 'Activity logged successfully' });
+        res.status(201).json(newFinding);
     } catch (error) {
-        console.error('Error logging activity:', error);
-        res.status(500).json({ error: 'Failed to log activity' });
+        console.error('Error creating audit finding:', error);
+        res.status(400).json({ error: 'Failed to create audit finding' });
     }
 });
 
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Backend server running on port ${PORT}`);
 });
