@@ -1,0 +1,62 @@
+/page.js]
+// Next.js page for displaying the public freelancer profile
+import { Suspense } from 'react';
+import ProfileDisplay from '@/components/ProfileDisplay';
+
+// This is a Server Component, fetching data directly on the server for SEO benefits.
+async function getProfileData(id) {
+    // In a real application, this would be an API call to the backend: /api/profile/:id
+    const response = await fetch(`http://localhost:3000/api/profile/${id}`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch profile data');
+    }
+    return response.json();
+}
+
+export default async function FreelancerProfilePage({ params }) {
+    const { id } = params;
+
+    // Fetch data on the server
+    const profileData = await getProfileData(id);
+
+    if (!profileData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                <p className="text-xl text-red-600">Profile Not Found</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-100 p-8">
+            <header className="mb-8 border-b pb-4">
+                <h1 className="text-4xl font-extrabold text-gray-900">Freelancer Profile</h1>
+                <p className="text-md text-indigo-600 mt-2">ID: {id}</p>
+            </header>
+            <Suspense fallback={<div className="text-center p-10">Loading profile details...</div>}>
+                <ProfileDisplay data={profileData} />
+            </Suspense>
+        </div>
+    );
+}
+
+// Dummy Component for display (simulating component separation)
+// In a real project, this would be imported from components/ProfileDisplay.js
+const ProfileDisplay = ({ data }) => (
+    <div className="bg-white shadow-xl rounded-lg p-8 max-w-3xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-4 border-b pb-2">{data.name}</h2>
+        <p className="text-lg text-gray-600 mb-6 italic">" {data.bio} "</p>
+        <div className="space-y-3">
+            <div className="flex items-center">
+                <span className="font-semibold w-24 text-gray-500">Owner:</span>
+                <a href={`https://explorer.example.com/address/${data.owner}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 truncate">{data.owner}</a>
+            </div>
+            <div className="flex items-center">
+                <span className="font-semibold w-24 text-gray-500">Created On:</span>
+                <time dateTime={new Date(data.createdAt * 1000).toISOString()}>
+                    {new Date(data.createdAt * 1000).toLocaleDateString()}
+                </time>
+            </div>
+        </div>
+    </div>
+);
