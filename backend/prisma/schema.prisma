@@ -1,3 +1,4 @@
+// Define the schema for storing security alerts and monitoring data.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,11 +8,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model SuspiciousActivity {
+model SecurityAlert {
   id          Int      @id @default(autoincrement())
-  userAddress String   // Storing as string for flexibility, could use BigInt/Text depending on context
-  amount      BigInt    // Use BigInt for large amounts
-  reason      String
-  timestamp   DateTime  @default(now())
-  isReported  Boolean   @default(false)
+  blockchain  String   // e.g., "Ethereum" or "Polygon"
+  address     String   // The address involved in the activity
+  reason      String   // Description of the suspicious activity
+  amount      BigInt    // Value related to the activity
+  timestamp   DateTime @default(now())
+  is_resolved Boolean  @default(false)
 }
