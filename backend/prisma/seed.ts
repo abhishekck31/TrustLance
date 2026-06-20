@@ -1,32 +1,27 @@
 import { PrismaClient } from '@prisma/client';
-import { BigInt } from 'bigint';
+import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Simulate initial data for demonstration purposes
-  await prisma.TreasuryHolding.createMany({
+  // Seed data for demonstration purposes
+  await prisma.freelancer.createMany({
     data: [
-      { address: "0xDAOAddress1", tokenSymbol: "ETH", balance: BigInt(100000000000) }, // 100 ETH
-      { address: "0xDAOAddress1", tokenSymbol: "USDC", balance: BigInt(500000000000) }, // 500M USDC
+      { name: "Alice Developer", bio: "Expert in Web3 and Solidity development.", primarySkill: "Solidity", rating: 950 },
+      { name: "Bob Designer", bio: "UI/UX specialist focusing on mobile apps.", primarySkill: "UI/UX Design", rating: 880 },
+      { name: "Charlie Writer", bio: "SEO and technical content creation for crypto projects.", primarySkill: "Content Writing", rating: 920 },
+      { name: "Dana Engineer", bio: "Backend infrastructure and database setup.", primarySkill: "Node.js", rating: 750 },
     ],
   });
 
-  await prisma.TreasuryFlow.createMany({
-    data: [
-      { fromAddress: "0xDAOAddress1", toAddress: "0xWalletA", token: "ETH", amount: BigInt(10000000000) }, // Flow out 100 ETH
-      { fromAddress: "0xWalletB", toAddress: "0xDAOAddress1", token: "USDC", amount: BigInt(5000000000) }, // Flow in 500M USDC
-    ],
-  });
-
-  console.log('Seeding complete.');
+  console.log('Database seeded successfully.');
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .catch(e => {
+    console.error(e)
+    process.exit(1)
   })
-  .finally(() => {
-    prisma.$disconnect();
+  .finally(async () => {
+    await prisma.$disconnect();
   });

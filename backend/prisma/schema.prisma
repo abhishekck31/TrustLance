@@ -8,41 +8,21 @@ generator client {
 }
 
 model Freelancer {
-  id            String    @id @default(cuid())
-  name          String
-  bio           String
-  rating        Int       @default(0)
-  totalProjects Int       @default(0)
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-}
-
-model Project {
-  id             String    @id @default(cuid())
-  title          String
-  description    String
-  budget         Int
-  completed      Boolean   @default(false)
-  isPublished    Boolean   @default(false)
-  creatorId      String
-  creator        Freelancer @relation(fields: [creatorId], references: [id])
-  createdAt      DateTime  @default(now())
-}
-
-// Additional table for advanced search filtering (optional but useful for complex queries)
-model FilterCriteria {
-  id          String @id @default(cuid())
+  id          Int      @id @default(autoincrement())
+  address     String   @unique // Wallet address (for potential NFT/Token linkage)
   name        String
-  minRating   Int?
-  maxBudget   Int?
-  category    String? // e.g., 'WebDev', 'Design'
-  searchTerms String
+  bio         String
+  primarySkill String // Key field for advanced search
+  rating      Int      @default(100)
+  totalProjectsCompleted Int @default(0)
+  createdAt   DateTime @default(now())
 }
 
-// Placeholder for demonstration purposes, actual data would be populated via indexers/queries
-generator filterQueries {
-  provider = "prisma-client-js"
+// Model for handling complex, filtered search results (optional optimization)
+model FreelancerSearchIndex {
+    id          Int      @id @default(autoincrement())
+    freelancerId Int      @unique
+    skill       String   // Skill used for indexing/faceting
+    location    String   // Location used for indexing/faceting
+    rating      Int
 }
-
-@@index([name])
-@@index([category])

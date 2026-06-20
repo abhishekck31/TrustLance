@@ -2,30 +2,35 @@
 pragma solidity ^0.8.20;
 
 contract Freelancer {
-    address public id;
+    address public freelancerAddress;
     string public name;
     string public bio;
-    uint256 public rating;
-    uint256 public totalProjects;
-    bool public isActive;
+    string public primarySkill; // For advanced searching/filtering
+    uint256 public rating;       // e.g., 1 to 1000 or based on karma system
+    uint256 public totalProjectsCompleted;
 
-    event FreelancerRegistered(address indexed freelancerId, string name);
+    event FreelancerAdded(address indexed freelancerAddress, string name);
 
-    constructor(string memory _name, string memory _bio) {
+    constructor(string memory _name, string memory _bio, string memory _skill) {
+        freelancerAddress = msg.sender;
         name = _name;
         bio = _bio;
+        primarySkill = _skill;
+        rating = 100; // Starting rating
+        totalProjectsCompleted = 0;
     }
 
-    function updateRating(uint256 _newRating) public {
-        require(_newRating <= 100, "Invalid rating");
-        rating = _newRating;
+    function updateRating(uint256 newRating) public {
+        require(newRating <= 1000, "Rating cannot exceed 1000");
+        rating = newRating;
     }
 
-    function addProject(string memory _projectName) public {
-        totalProjects = totalProjects + 1;
+    function addProject() public {
+        totalProjectsCompleted = totalProjectsCompleted + 1;
     }
 
-    function isActiveStatus() public view returns (bool) {
-        return isActive;
+    // Simple getter to retrieve key info for indexing/listing purposes
+    function getDetails() public view returns (string memory, string memory, string memory, uint256) {
+        return (name, bio, primarySkill, rating);
     }
 }
