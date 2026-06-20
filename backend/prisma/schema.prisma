@@ -7,22 +7,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Freelancer {
-  id          Int      @id @default(autoincrement())
-  address     String   @unique // Wallet address (for potential NFT/Token linkage)
-  name        String
-  bio         String
-  primarySkill String // Key field for advanced search
-  rating      Int      @default(100)
-  totalProjectsCompleted Int @default(0)
-  createdAt   DateTime @default(now())
-}
-
-// Model for handling complex, filtered search results (optional optimization)
-model FreelancerSearchIndex {
-    id          Int      @id @default(autoincrement())
-    freelancerId Int      @unique
-    skill       String   // Skill used for indexing/faceting
-    location    String   // Location used for indexing/faceting
-    rating      Int
+model HiringOpportunity {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  location    String
+  type        String   // e.g., Full-time, Internship, Contract
+  description String
+  salary      Float?
+  postedDate  DateTime
+  isActive    Boolean  @default(true)
 }
