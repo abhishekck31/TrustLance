@@ -7,25 +7,50 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Customer {
+  id        Int      @id @default(autoincrement())
+  walletAddress String @unique
+  name      String?
+  createdAt DateTime @default(now())
+  subscriptions Subscription[]
+}
+
 model Subscription {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  planId      String
-  startDate   DateTime
-  endDate     DateTime?
-  status      String // e.g., 'active', 'canceled', 'past_due'
-  monthlyPrice Float
+  id          Int      @id @default(autoincrement())
+  customerId Int
+  planName    String
+  startDate   DateTime @default(now())
+  monthlyPrice Float // The recurring revenue amount
+  status      String   // e.g., 'active', 'canceled', 'trial'
   createdAt   DateTime @default(now())
+  customer    Customer @relation(fields: [customerId], references: [id])
 }
 
-model Payment {
-  id          String   @id @default(uuid())
-  subscriptionId String
-  amount      Float
-  date        DateTime
-  status      String // e.g., 'paid', 'failed'
-  transactionId String? @unique
-  createdAt   DateTime @default(now())
-
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+// Optional: A table for aggregated monthly revenue snapshots if performance requires pre-calculation
+model MonthlyRevenueSnapshot {
+  id          Int      @id @default(autoincrement())
+  month       String   @unique // Format YYYY-MM
+  totalMRR    Float    // Total MRR for that month
+  reportedAt  DateTime @default(now())
 }
+
+// Example of an aggregate calculated directly from subscriptions (can be handled in service layer too)
+model MonthlyMetric {
+  id            Int      @id @default(autoincrement())
+  month         String   @unique // YYYY-MM
+  totalMRR      Float
+  newSubscriptions Int
+  churnedCustomers Int
+  reportedAt    DateTime @default(now())
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  TRIAL
+  PAST_DUE
+}
+
+// Example relation setup for clarity (already implied by the above)
+// model Customer { ... }
+// model Subscription { customerId Int, customer Customer @relation(fields: [customerId], references: [id]) }

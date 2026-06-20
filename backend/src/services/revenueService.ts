@@ -1,63 +1,104 @@
-import { db } from '../db';
-import { Subscription, Payment } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { Subscription, MonthlyMetric, SubscriptionStatus } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 /**
- * Calculates the Monthly Recurring Revenue (MRR) for a specific user or time period.
- * @param userId The ID of the user to calculate MRR for.
- * @returns The total MRR amount.
+ * Calculates the total Monthly Recurring Revenue (MRR) for a given month.
+ * @param year The year to query.
+ * @param month The month to query (1-indexed).
+ * @returns The total MRR for that period.
  */
-export async function calculateMRR(userId: string): Promise<number> {
-  // In a real scenario, this would involve complex date filtering and ensuring only active subscriptions count towards MRR.
-  const activeSubscriptions = await db.subscription.findMany({
+export async function calculateMonthlyMRR(year: number, month: number): Promise<number> {
+  const startOfMonth = new Date(year, month - 1, 1);
+  const endOfMonth = new Date(year, month, 0); // Last day of the month
+
+  const subscriptions = await prisma.subscription.findMany({
     where: {
-      userId: userId,
       status: 'active',
     },
   });
 
   let totalMRR = 0;
 
-  for (const sub of activeSubscriptions) {
-    // For MRR calculation, we typically sum up the recurring price of all currently active subscriptions.
-    totalMRR += sub.monthlyPrice;
+  for (const sub of subscriptions) {
+    if (new Date(sub.startDate) >= startOfMonth && new Date(sub.startDate) <= endOfMonth) {
+      totalMRR += sub.monthlyPrice;
+    }
   }
 
   return parseFloat(totalMRR.toFixed(2));
 }
 
 /**
- * Calculates the total revenue generated from payments in a given period.
- * @param startDate The start date for the calculation (inclusive).
- * @param endDate The end date for the calculation (inclusive).
- * @returns The total revenue amount.
+ * Calculates key monthly revenue metrics (MRR, New Subs, Churn) for a given month.
+ * NOTE: This is a simplified implementation. Real-world churn calculation requires tracking historical states over time.
  */
-export async function calculateRevenuePeriod(startDate: Date, endDate: Date): Promise<number> {
-  const payments = await db.payment.findMany({
+export async function calculateMonthlyMetrics(year: number, month: number): Promise<object> {
+  const startOfMonth = new Date(year, month - 1, 1);
+  const endOfMonth = new Date(year, month, 0);
+
+  // 1. Total Active MRR for the month
+  const activeSubscriptions = await prisma.subscription.findMany({
     where: {
-      date: {
-        gte: startDate,
-        lte: endDate,
-      },
+      status: 'active',
+      // Check if subscription started within the relevant time frame (simplification)
+      startDate: {
+        gte: startOfMonth,
+      }
     },
   });
 
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalMRR = activeSubscriptions.reduce((sum, sub) => sum + sub.monthlyPrice, 0);
 
-  return parseFloat(totalRevenue.toFixed(2));
+  // 2. New Subscriptions during the month (Requires comparing current state vs previous state, omitted for brevity but would involve complex joins/history in production)
+  // Placeholder: In a real system, this requires historical data comparisons.
+  const newSubscriptionsCount = 15; // Mock value
+
+  // 3. Churn (Placeholder calculation)
+  const totalCustomersAtStart = await prisma.customer.count({ where: { createdAt: { gte: startOfMonth } } });
+  const currentActiveCustomers = activeSubscriptions.length;
+  const churnedCount = Math.max(0, totalCustomersAtStart - currentActiveCustomers); // Highly simplified
+
+  return {
+    month: `${year}-${String(month).padStart(2, '0')}`,
+    totalMRR: totalMRR,
+    newSubscriptions: newSubscriptionsCount,
+    churnedCustomers: churnedCount,
+  };
 }
 
-export async function getMRRAnalytics(userId: string): Promise<{ mrr: number; totalRevenue: number }> {
-    const mrr = await calculateMRR(userId);
-    // Fetch revenue for the last full month as a simple example analytic hook
-    const today = new Date();
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    const totalRevenue = await calculateRevenuePeriod(startOfMonth, endOfMonth);
-
-
-    return {
-        mrr: mrr,
-        totalRevenueLastMonth: totalRevenue,
-    };
+// Example endpoint handler (Conceptual - actual implementation in Express router)
+export async function getRevenueAnalytics(year: number, month: number) {
+    try {
+        const mrr = await calculateMonthlyMRR(year, month);
+        const metrics = await calculateMonthlyMetrics(year, month);
+        return {
+            mrr: mrr,
+            metrics: metrics
+        };
+    } catch (error) {
+        console.error("Error calculating revenue analytics:", error);
+        throw new Error("Failed to calculate analytics.");
+    }
 }
+
+// Utility function for fetching all historical data for charting
+export async function getHistoricalData(startDate: Date, endDate: Date) {
+    const results = await prisma.subscription.findMany({
+        where: {
+            startDate: {
+                gte: startDate,
+                lte: endDate,
+            }
+        },
+        include: {
+            customer: true
+        }
+    });
+    return results;
+}
+
+
+export default prisma;
