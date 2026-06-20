@@ -1,53 +1,55 @@
-// Integrating the new command palette into the main page for demonstration
+// Main page demonstrating the integration of the skeleton loading system.
+import SkeletonLoader from '@/components/SkeletonLoader'
+import React from 'react'
 
-import CommandPalette from './components/CommandPalette';
-import { useState } from 'react';
+// Mock data fetching function simulating an async load delay
+const fetchMockData = (): Promise<any> => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ items: [{ id: 1, title: "TrustLance Contract A" }, { id: 2, title: "TrustLance Contract B" }] });
+    }, 2000) // Simulate 2 seconds loading time
+  })
+}
 
-export default function HomePage() {
-  const sampleCommands = [
-    "Connect Wallet",
-    "View Transactions",
-    "Manage Settings",
-    "Add New Contract",
-    "Execute Trade",
-    "Advanced Debug View"
-  ];
-  const [showPalette, setShowPalette] = useState(false);
-
-  const handleSelectCommand = (command: string) => {
-    console.log("Selected Command:", command);
-    setShowPalette(false); // Close palette after selection
-  };
+export default async function HomePage() {
+  // In a real app, this would be inside a Server Component or handled via state in Client Components.
+  // For demonstration in the App Router context (which often uses async/await), we simulate the wait effect if possible, 
+  // but since skeleton loading is usually client-side based on API calls, we handle the structure here.
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      {/* Header / Main Content */}
-      <header className="mb-12 border-b pb-4">
-        <h1 className="text-4xl font-bold text-indigo-600">TrustLance Dashboard</h1>
-        <p className="mt-2 text-lg text-gray-600">Welcome to the Advanced Interface.</p>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <header className="mb-10">
+        <h1 className="text-4xl font-bold text-gray-900">TrustLance Dashboard</h1>
+        <p className="text-lg text-gray-600 mt-2">Web3 Application Skeleton Loading Demo</p>
       </header>
 
-      {/* Action Button to Trigger Command Palette */}
-      <button
-        onClick={() => setShowPalette(true)}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-4 focus:ring-indigo-300"
-      >
-        ⌘K Open Advanced Commands
-      </button>
+      <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-lg p-6">
+        <h2 className="text-2xl font-semibold mb-6 text-gray-800">Contract Listings</h2>
 
-      {/* Command Palette Component */}
-      {showPalette && (
-        <CommandPalette
-          items={sampleCommands}
-          onSelect={handleSelectCommand}
-        />
-      )}
+        {/* Skeleton Loading Section */}
+        <div className="mb-10 border border-dashed p-4 rounded-md bg-gray-50">
+          <h3 className="text-xl font-medium mb-4 text-gray-700">Recent Transactions</h3>
+          <SkeletonLoader className="mb-6" />
+        </div>
 
-      {/* Main Dashboard Content */}
-      <main className="mt-12 bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-800">Dashboard Overview</h2>
-        <p className="text-gray-700">Use the command palette above to quickly access advanced features like connecting wallets, viewing transaction history, and managing contract states.</p>
-      </main>
+        {/* Actual Content Placeholder (or loading state simulation) */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-semibold text-gray-800">Account Overview</h2>
+          <SkeletonLoader className="w-full" />
+          <SkeletonLoader className="w-full" />
+
+          <h2 className="text-2xl font-semibold text-gray-800 pt-6">Recent Activities</h2>
+          <SkeletonLoader className="w-full" />
+          <SkeletonLoader className="w-full" />
+        </div>
+      </div>
+
+      {/* Optional: A real loading state trigger (if this were a Client Component fetching data) */}
+      {/* 
+      <div className="mt-10 text-center">
+        <button onClick={fetchMockData}>Start Real Load (Simulated)</button>
+      </div> 
+      */}
     </div>
-  );
+  )
 }
