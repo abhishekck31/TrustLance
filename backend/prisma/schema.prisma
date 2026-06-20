@@ -8,13 +8,12 @@ generator client {
 }
 
 model HiringOpportunity {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
-  company     String
-  location    String
-  type        String   // e.g., Full-time, Internship, Contract
   description String
-  salary      Float?
-  postedDate  DateTime
-  isActive    Boolean  @default(true)
+  location    String
+  salary      Float
+  postedAt    DateTime
+  isPublic    Boolean   @default(true)
+  // In a real scenario, this might link to an address or contract if opportunities are tokenized
 }

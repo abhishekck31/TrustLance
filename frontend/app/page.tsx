@@ -1,111 +1,81 @@
-'use client';
+import { HiringOpportunity } from '@/types/hiring'; // Assuming we define types here or in a shared folder
+import { fetchHiringOpportunities } from '@/lib/api';
+import HiringBoard from '@/components/HiringBoard';
 
-import { useState, useMemo } from 'react';
-import { SearchBar } from '@/components/SearchBar';
-import { FreelancerCard } from '@/components/FreelancerCard';
-import { SearchResults } from '@/components/SearchResults';
-
-export default function HomePage() {
-  const [filters, setFilters] = useState({ skill: '', location: '', minRating: '' });
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const handleSearch = async (filters: { skill: string; location: string; minRating: string }) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Simulate API call to the backend search endpoint
-      const response = await fetch(`/api/freelancers?skill=${filters.skill}&location=${filters.location}&minRating=${filters.minRating}`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok.');
-      }
-      const data = await response.json();
-      setResults(data);
-    } catch (err) {
-      setError("Failed to fetch results from the server.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Example of how to pre-populate or handle initial search state if needed
-  const handleApplyFilters = (filters: { skill: string; location: string; minRating: string }) => {
-      handleSearch(filters);
-  }
-
+export default async function HomePage() {
+  const opportunities = await fetchHiringOpportunities();
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <header className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-indigo-600">TrustLance Discovery Engine</h1>
-        <p className="text-gray-600 mt-2">Find top talent based on skills, location, and rating.</p>
+    <main className="min-h-screen bg-gray-50 p-8">
+      <header className="text-center mb-12 border-b pb-6">
+        <h1 className="text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">
+          Public Hiring Board
+        </h1>
+        <p className="text-xl text-gray-600">Discover verified, public opportunities on TrustLance.</p>
       </header>
 
-      {/* Search and Filter Controls */}
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-gray-700">Advanced Search & Filters</h2>
-        
-        {/* Using a simplified filter interface for demonstration */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Skill</label>
-                <input 
-                    type="text" 
-                    value={filters.skill}
-                    onChange={(e) => setFilters({...filters, skill: e.target.value})}
-                    className="w-full border border-gray-300 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location (Bio Search)</label>
-                <input 
-                    type="text" 
-                    value={filters.location}
-                    onChange={(e) => setFilters({...filters, location: e.target.value})}
-                    className="w-full border border-gray-300 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                />
-            </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Min Rating</label>
-                <input 
-                    type="number" 
-                    value={filters.minRating}
-                    onChange={(e) => setFilters({...filters, minRating: e.target.value})}
-                    className="w-full border border-gray-300 p-2 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                />
-            </div>
-             <div className="flex items-end">
-                <button
-                    onClick={() => handleApplyFilters(filters)}
-                    disabled={loading}
-                    className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:opacity-50 transition"
-                >
-                    {loading ? 'Searching...' : 'Apply Filters'}
-                </button>
-            </div>
-        </div>
-
-      </div>
-
-      {/* Results Display */}
-      <div className="max-w-6xl mx-auto">
-        {error && (
-          <div className="p-4 bg-red-100 text-red-700 border border-red-400 rounded mb-4">{error}</div>
+      <section className="max-w-6xl mx-auto">
+        {opportunities.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <p className="text-gray-500 text-lg">No public hiring opportunities found at this time.</p>
+            <p className="mt-2">Check back soon for new listings!</p>
+          </div>
+        ) : (
+          <HiringBoard opportunities={opportunities} />
         )}
-
-        {!loading && results.length > 0 && (
-            <SearchResults freelancers={results} />
-        )}
-
-        {!loading && results.length === 0 && !error && (
-             <div className="text-center p-10 bg-white rounded-lg shadow">
-                <p className="text-xl text-gray-500">No freelancers found matching your criteria.</p>
-            </div>
-        )}
-
-      </div>
-    </div>
+      </section>
+    </main>
   );
+}
+
+// Mock API function definition - In a real app, this would use fetch() to the backend URL
+async function fetchHiringOpportunities() {
+  // Placeholder: Replace with actual fetch call logic for development setup
+  console.log("Fetching data from backend...");
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Mock Data simulating the expected structure from the backend
+  return [
+    { id: '1', title: 'Senior Solidity Developer (DAO Focus)', description: 'Seeking a lead developer for our DeFi protocol roadmap.', location: 'Remote (Global)', salary: 140000, postedAt: new Date(), isPublic: true },
+    { id: '2', title: 'Frontend React Engineer', description: 'Build the next generation of decentralized application interfaces.', location: 'New York, NY', salary: 95000, postedAt: new Date(Date.now() - 86400000) },
+    { id: '3', title: 'Blockchain Data Analyst', description: 'Analyze on-chain data for market trends.', location: 'London, UK', salary: 75000, postedAt: new Date(Date.now() - 172800000) },
+  ];
+}
+
+// Component Placeholder (Defined below)
+interface HiringBoardProps {
+    opportunities: HiringOpportunity[];
+}
+
+function HiringBoard({ opportunities }: HiringBoardProps) {
+    return (
+        <div className="space-y-6">
+            {opportunities.map((opp) => (
+                <div key={opp.id} className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-indigo-500 hover:shadow-xl transition duration-300">
+                    <h2 className="text-2xl font-bold text-indigo-700 mb-2">{opp.title}</h2>
+                    <p className="text-sm text-gray-500 mb-3 flex items-center space-x-3">
+                        <span>📍 Location: {opp.location}</span>
+                        <span>💰 Salary: ${opp.salary.toLocaleString()}</span>
+                    </p>
+                    <p className="text-gray-700 mb-4">{opp.description}</p>
+                    <div className="flex justify-between items-center pt-3 border-t">
+                        <span className="text-sm text-gray-500">Posted: {new Date(opp.postedAt).toLocaleDateString()}</span>
+                        <a href="#" className="text-indigo-600 font-semibold hover:text-indigo-800 transition">View Details & Apply →</a>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// Define the type expected from the backend
+interface HiringOpportunity {
+    id: string;
+    title: string;
+    description: string;
+    location: string;
+    salary: number;
+    postedAt: string; // ISO Date string from API
+    isPublic: boolean;
 }

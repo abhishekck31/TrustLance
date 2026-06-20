@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styling for trust branding */
+.bg-trust-gray {
+    background-color: #f3f4f6; /* Tailwind gray-100 */
+}
