@@ -1,35 +1,24 @@
+// Example Prisma Schema for tracking vote results and juror data (PostgreSQL)
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-generator"
 }
 
-model User {
-  id        String   @id @default(cuid())
-  walletAddress String @unique // Web3 address identifier
-  createdAt DateTime @default(now())
-  transactions Transaction[]
+model Proposal {
+  id    Int     @id @default(autoincrement())
+  name  String
+  result Int
+  votes SubmittedVotes []Vote
 }
 
-model Transaction {
-  id        String   @id @default(cuid())
-  userId    String
-  timestamp DateTime
-  value     Float    // Example: amount transacted
-  contract  String?
-  createdAt DateTime @default(now())
-
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-// Cohort Tracking Model (For analytical results storage)
-model CohortMetric {
-  id            String    @id @default(cuid())
-  cohortMonth  String    // e.g., "2024-01"
-  cohortSize   Int       // Number of users in this cohort
-  retainedCount Int      // Number of users retained after X months (calculated based on retention window)
-  retentionRate Float   // Calculated percentage
+model Vote {
+  id          Int      @id @default(autoincrement())
+  proposalId  Int
+  jurorAddress String // Storing address as string for simplicity in PG setup if not using custom type
+  voteAmount  Int
+  createdAt   DateTime @default(now())
 }
