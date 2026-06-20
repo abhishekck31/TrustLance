@@ -1,65 +1,87 @@
-// Main entry point for the Node.js/Express backend. Handles Web3 interaction.
+// Main entry point for the Node.js/Express API server.
 const express = require('express');
-const cors = require('cors');
-const { ethers } = require('ethers');
+const { PrismaClient } = require('@prisma/client');
+const dotenv = require('dotenv');
 
+dotenv.config();
 const app = express();
-const PORT = 3001;
+const prisma = new PrismaClient();
 
-app.use(cors());
 app.use(express.json());
 
-let provider;
-let signer;
+// --- Mock Web3 Interaction Layer Placeholder ---
+// In a real application, this layer would handle signing transactions via ethers.js/web3.js
+const mockWeb3Service = {
+    sendTransaction: async (address, functionName, args) => {
+        console.log(`[MOCK WEB3] Executing ${functionName} for address ${address}`);
+        // Simulate success
+        return { success: true, txHash: `0xmockhash${Date.now()}` };
+    },
+    readFavorites: async (address) => {
+        // Placeholder for fetching on-chain favorites
+        return [];
+    }
+};
+// ---------------------------------------------------
 
-// --- Web3 Connection Setup ---
-async function setupWeb3(providerInstance, signerInstance) {
-    provider = providerInstance;
-    signer = signerInstance;
-}
 
-// Endpoint to read allocation status from the blockchain
-app.get('/api/allocation/:id', async (req, res) => {
+// API Routes
+
+// 1. Get User Favorites
+app.get('/api/user/favorites', async (req, res) => {
     try {
-        const { id } = req.params;
-        if (!id) return res.status(400).send({ error: "Allocation ID required" });
-
-        // Assume we are reading from a deployed contract address (e.g., the Treasury contract)
-        const treasuryAddress = "0xYOUR_TREASURY_ADDRESS"; // Placeholder! Replace this in production
-        const treasuryContract = new ethers.Contract(treasuryAddress, ["function getAllocationDetails(uint256) view returns (address,uint256,uint256,uint256,uint256,bool)"], signer);
-
-        const details = await treasuryContract.getAllocationDetails(parseInt(id));
-        res.json({ success: true, data: details });
+        const userId = req.user.id; // Assume user context is attached by middleware
+        const favorites = await prisma.SavedJob.findMany({
+            where: { userId: userId },
+            include: { job: true }
+        });
+        res.json(favorites);
     } catch (error) {
-        console.error("Error fetching allocation details:", error);
-        res.status(500).json({ success: false, message: "Failed to retrieve data" });
+        console.error("Error fetching user favorites:", error);
+        res.status(500).json({ error: "Failed to fetch favorites" });
     }
 });
 
-// Endpoint to submit a vote
-app.post('/api/vote', async (req, res) => {
+// 2. Save a Job as Favorite (Simulated interaction with the contract)
+app.post('/api/favorites/add/:jobId', async (req, res) => {
+    const { jobId } = req.params;
+    const userId = req.user.id; // Get user from context
+
     try {
-        const { allocationId, voteFor } = req.body;
-        if (!allocationId || typeof voteFor === 'undefined') {
-            return res.status(400).json({ success: false, message: "Missing allocationId or voteFor" });
-        }
+        // In a real scenario: Call the deployed contract's addFavorite function using web3 provider
+        const tx = await mockWeb3Service.sendTransaction(userId, 'addFavorite', jobId);
+        console.log(`Transaction successful: ${tx.txHash}`);
 
-        // Assume we are calling the GovernanceSystem contract for voting interaction
-        const governanceAddress = "0xYOUR_GOVERNANCE_ADDRESS"; // Placeholder!
-        const governanceContract = new ethers.Contract(governanceAddress, ["function callTreasury(uint256,bool)"], signer);
+        // Update local DB state (for quick response/caching)
+        await prisma.SavedJob.update({
+            where: { userId: userId, jobId: jobId },
+            data: { isFavorite: true }
+        });
 
-        const tx = await governanceContract.callTreasury(parseInt(allocationId), voteFor);
-        await tx.wait(10); // Wait for transaction confirmation
-
-        res.json({ success: true, message: `Vote submitted successfully. Transaction Hash: ${tx.hash}` });
+        res.status(200).json({ message: `Job ${jobId} favorited successfully`, txHash: tx.txHash });
 
     } catch (error) {
-        console.error("Error submitting vote:", error);
-        res.status(500).json({ success: false, message: "Failed to submit vote" });
+        console.error("Error saving favorite:", error);
+        res.status(500).json({ error: "Failed to save favorite" });
     }
 });
 
+// 3. Fetch All User Favorites
+app.get('/api/user/all-favorites', async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const favorites = await prisma.SavedJob.findMany({
+            where: { userId: userId },
+            include: { job: true }
+        });
+        res.json(favorites);
+    } catch (error) {
+        console.error("Error fetching all user favorites:", error);
+        res.status(500).json({ error: "Failed to fetch all favorites" });
+    }
+});
 
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Backend server running on http://localhost:${PORT}`);
+    console.log(`Backend server running on port ${PORT}`);
 });

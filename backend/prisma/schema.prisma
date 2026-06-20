@@ -1,4 +1,5 @@
-// Schema definition for the backend database (PostgreSQL)
+// Prisma schema definition for the backend database (PostgreSQL).
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -9,46 +10,31 @@ generator client {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String   @unique
-  walletAddress String @unique // Store derived wallet address for easy lookup
+  id        String   @id @default(cuid())
+  walletAddress String @unique
+  name      String?
   createdAt DateTime @default(now())
-  listings  Listing[]
+  favorites SavedJob[]
 }
 
-model Category {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  listings    Listing[]
-}
-
-model Listing {
-  id          Int      @id @default(autoincrement())
+model Job {
+  id          String    @id @default(cuid())
   title       String
-  categoryName String
-  price       Float // Stored as Float for simplicity in mock, should be Decimal in production
-  sellerAddress String // Address on chain
-  status      String   @default("active") // active, sold
-  createdAt   DateTime @default(now())
-
-  user        User     @relation(fields: [sellerAddress], references: [walletAddress])
-  category    Category @relation(fields: [categoryName], references: [name])
+  description String
+  postedBy    String // Address of the user who posted it
+  createdAt   DateTime  @default(now())
+  favorites   SavedJob[]
 }
 
-// To handle the Web3 integration aspect in the backend (optional but good practice)
-model Transaction {
-  id          Int      @id @default(autoincrement())
-  listingId   Int
-  buyerAddress String
-  amount      Float
-  status      String // pending, completed, failed
-  createdAt   DateTime @default(now())
-}
+model SavedJob {
+  id            String   @id @default(cuid())
+  userId        String
+  jobId         String
+  isFavorite    Boolean  @default(false)
+  savedAt       DateTime @default(now())
 
-// Placeholder for setup data migration
-enum ListingStatus {
-  ACTIVE
-  SOLD
+  user          User     @relation(fields: [userId], references: [id])
+  job           Job      @relation(fields: [jobId], references: [id])
+
+  @@unique([userId, jobId])
 }
