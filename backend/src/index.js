@@ -1,91 +1,44 @@
-require('dotenv').config();
+// Backend setup using Express, connecting to a conceptual blockchain node client (e.g., Ethers.js/Web3.js) and Prisma for data persistence if needed, though here we focus on direct contract reading.
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const { ethers } = require('ethers');
-const { PrismaClient } = require('@prisma/client');
-const { createClient } = require('redis');
-
 const app = express();
-const prisma = new PrismaClient();
-const PORT = process.env.PORT || 4000;
+const port = 3001;
 
-// Middleware
-app.use(helmet());
+// Mock function to simulate fetching data from the blockchain state (In a real app, this connects via Web3 provider)
+const fetchTreasuryData = async () => {
+    // In a real scenario, use web3.eth.call() or similar to read state from the deployed contract address.
+    console.log("Fetching blockchain treasury data...");
+    
+    // Mock Data Simulation for Dashboard Demo
+    return {
+        owner: "0xOwnerAddressMock",
+        holdings: {
+            "0xUserA": 100000,
+            "0xUserB": 50000,
+            "0xDAO_Vault": 5000000
+        },
+        flows: [
+            { from: "0xUserA", to: "0xDAO_Vault", amount: 10000, description: "Initial Deposit" },
+            { from: "0xDAO_Vault", to: "0xUserB", amount: 5000, description: "Distribution" }
+        ]
+    };
+};
+
+
 app.use(cors());
 app.use(express.json());
-app.use(morgan('dev'));
 
-// Redis Setup (Mock/Basic for now)
-let redisClient;
-(async () => {
+// API Endpoint for Dashboard Data
+app.get('/api/dashboard/treasury', async (req, res) => {
     try {
-        redisClient = createClient({ url: process.env.REDIS_URL });
-        redisClient.on('error', (err) => console.error('Redis Client Error', err));
-        await redisClient.connect();
-        console.log("Connected to Redis");
-    } catch (e) {
-        console.log("Redis not available, skipping...");
-    }
-})();
-
-// Basic API Routes
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Fetch all cached jobs
-app.get('/api/jobs', async (req, res) => {
-    try {
-        const jobs = await prisma.job.findMany({
-            orderBy: { createdAt: 'desc' }
-        });
-        res.json(jobs);
+        const data = await fetchTreasuryData();
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'Database error' });
+        console.error("Error fetching treasury data:", error);
+        res.status(500).json({ error: "Failed to retrieve treasury data" });
     }
 });
 
-// Blockchain Event Indexing setup (Ethers.js)
-function setupBlockchainListeners() {
-    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || "https://rpc-amoy.polygon.technology");
-    const contractAddress = process.env.ESCROW_ADDRESS;
-    
-    if (!contractAddress) {
-        console.log("Skipping blockchain listeners: ESCROW_ADDRESS not set in .env");
-        return;
-    }
-
-    // ABI snippet for events
-    const abi = [
-        "event JobCreated(uint256 indexed jobId, address indexed client, address indexed freelancer, uint256 totalAmount)"
-    ];
-
-    const escrowContract = new ethers.Contract(contractAddress, abi, provider);
-
-    escrowContract.on("JobCreated", async (jobId, client, freelancer, totalAmount, event) => {
-        console.log(`New Job Created! ID: ${jobId}, Client: ${client}`);
-        try {
-            await prisma.job.create({
-                data: {
-                    jobId: Number(jobId),
-                    client,
-                    freelancer,
-                    totalAmount: totalAmount.toString(),
-                    status: 'Open'
-                }
-            });
-            console.log("Saved JobCreated event to database");
-        } catch (error) {
-            console.error("Error saving job to DB:", error);
-        }
-    });
-    
-    console.log(`Listening to Escrow contract at ${contractAddress}`);
-}
-
-app.listen(PORT, async () => {
-    console.log(`Server running on port ${PORT}`);
-    setupBlockchainListeners();
+app.listen(port, () => {
+    console.log(`Backend API listening at http://localhost:${port}`);
 });
