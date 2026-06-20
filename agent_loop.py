@@ -4,6 +4,11 @@ import subprocess
 import time
 import ollama
 import json
+import sys
+
+# Ensure UTF-8 output for emojis in Windows console
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # --- CONFIGURATION ---
 REPO_PATH = os.path.dirname(os.path.abspath(__file__))  # ⚠️ Auto-detected current repo path
@@ -13,34 +18,59 @@ COMPLETED_TASKS_FILE = os.path.join(REPO_PATH, ".completed_tasks.json")
 # --- FULL ROADMAP QUEUE ---
 # The agent will work down this list sequentially, 100% hands-free.
 ROADMAP_QUEUE = [
-    # LEVEL 1 — CORE ESCROW MVP (Smart Contracts & Foundation)
-    "Write the core TrustLance Escrow Solidity smart contract supporting milestones, withdrawal pattern, and basic state machine (Created, Locked, Released, Disputed). Ensure OpenZeppelin access controls.",
-    "Write the complete Hardhat deployment and test scripts for the Escrow contract, covering funding, milestone release, and basic access control rules.",
-    "Design the Prisma schema in backend/prisma/schema.prisma detailing User, Job, Milestone, and EscrowTransaction tables matching the Web3 status changes.",
-    "Build the Express API infrastructure in backend/ including router patterns for authenticating wallets, managing Jobs, and keeping track of transaction hashes.",
-    "Implement the Next.js wallet connection layout using Wagmi and RainbowKit with network detection and role selection (Client vs Freelancer).",
-    "Build Frontend pages for Create Job, Job Details, and Job Listings using Tailwind CSS and hooks connected to our deployed contract states.",
-    "Create the Milestone Management UI logic to track progress, submit milestones with placeholder strings, and manage the approval flows.",
-    "Build a basic dispute contract module alongside backend dispute state APIs allowing funds to freeze upon a dispute request.",
-    
-    # LEVEL 2 — PROFESSIONAL PRODUCT FEATURES
-    "Build the Client and Freelancer unified Dashboards using Tailwind CSS grids, structural active jobs widgets, and a recent activity log component.",
-    "Implement User Profile schemas and frontend pages rendering portfolios, user skills tags, and placeholder reputation scores.",
-    "Create an in-app database-backed notification pipeline alerting clients when milestones are submitted and freelancers when escrow is funded.",
-    
-    # LEVEL 3 — WEB3-NATIVE FEATURES
-    "Integrate on-chain Event Feeds on the frontend reading past Escrow contract events and linking them directly to block explorer URLs.",
-    "Set up decentralized storage metadata mapping: write a backend utility tool that pins job creation metadata payloads to IPFS format structure structures.",
-    
-    # LEVEL 4 — ADVANCED FEATURES (DAO Governance)
-    "Draft the foundational DAO Governance and Juror voting smart contract where staked tokens dictate voting weight on open escrow disputes.",
-    "Create the Juror Dashboard interface displaying disputed projects, open voting timelines, and staking pool metrics.",
-    
-    # LEVEL 5 — AI FEATURES
-    "Build an internal backend evaluation route utilizing your local Gemma model to analyze job descriptions for potential scam traits before posting.",
-    
-    # LEVEL 6 — "WOW" FEATURES
-    "Implement a Soulbound Token (SBT) smart contract module that automatically mints a non-transferable work achievement token upon successful milestone closures."
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (Security & Audit Readiness)
+    "Design and implement a Smart Contract Upgrade Framework using UUPS or Transparent Proxy.",
+    "Implement a Timelock Controller to delay critical governance actions.",
+    "Implement Multi-Signature Admin Controls to replace single-owner controls.",
+    "Build a Security Monitoring Dashboard to track suspicious activity.",
+    "Create an Audit Findings Tracker Dashboard for security reviews.",
+
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (Treasury & Revenue)
+    "Build a Platform Fee Engine for dynamic fee configuration.",
+    "Create a DAO Treasury Dashboard showing treasury holdings and flows.",
+    "Implement Revenue Analytics for monthly recurring revenue metrics.",
+    "Automate Juror Reward Distribution for payouts.",
+    "Implement Treasury Allocation Voting for governance-controlled spending.",
+
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (Marketplace Features)
+    "Build a Freelancer Discovery Engine with advanced search and filters.",
+    "Create a Client Discovery Page for public hiring opportunities.",
+    "Implement a Featured Talent System for premium visibility.",
+    "Build a Category-Based Marketplace (Design, Dev, AI, Marketing, etc.).",
+    "Implement a Saved Jobs & Favorites bookmark system.",
+
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (Reputation & Identity)
+    "Implement Verifiable Skill Badges as on-chain certifications.",
+    "Build a Reputation Decay Model to keep scores current.",
+    "Develop a Trust Score Engine as a composite reputation metric.",
+    "Create a Proof-of-Work NFT for completed projects.",
+    "Build Public Freelancer Profile Pages with shareable profile URLs.",
+
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (Advanced Analytics)
+    "Create a Platform Health Dashboard showing TVL, disputes, and completion rate.",
+    "Implement Cohort Analytics for retention by month.",
+    "Build an Escrow Conversion Funnel (Job -> Funded -> Completed).",
+    "Implement Juror Accuracy Metrics for voting performance.",
+    "Add Revenue Forecasting to predict future earnings.",
+
+    # LEVEL 7 — ENTERPRISE & SCALE FEATURES (AI-Native Features)
+    "Build AI Job Risk Assessment to detect suspicious contracts.",
+    "Create an AI Escrow Assistant to explain contract status.",
+    "Implement AI Freelancer Recommendations to match jobs to talent.",
+    "Build an AI Governance Assistant to summarize proposals.",
+    "Create an AI Dispute Evidence Analyzer to summarize submissions and evidence.",
+
+    # DESIGN LEVEL 2 (Premium UI Tasks)
+    "Implement a Bento-grid analytics dashboard.",
+    "Add an Advanced command palette (⌘K).",
+    "Implement Global search functionality.",
+    "Add Dark/light theme support.",
+    "Build a Real-time notification center.",
+    "Implement a Skeleton loading system.",
+    "Add Micro-interactions to UI components.",
+    "Create an Activity timeline.",
+    "Implement Animated governance voting results.",
+    "Add Mobile PWA support."
 ]
 
 # --- GIT PIPELINE ---
