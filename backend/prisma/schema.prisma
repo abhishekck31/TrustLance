@@ -1,18 +1,18 @@
-// Define the database structure for tracking proof data off-chain
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model NftProof {
-  id          Int      @id @default(autoincrement())
-  projectId   Int      @unique
-  proofHash   BigInt    // Store the PoW hash as a large integer
-  details     String
-  status      String   @default("PENDING_VERIFICATION")
-  createdAt   DateTime  @default(now())
+generator client {
+  provider = "prisma-client-js"
+}
+
+model PlatformHealth {
+  id             Int      @id @default(autoincrement())
+  tvl            Float     // Total Value Locked (e.g., in USD)
+  totalDisputes  Int       // Total number of active disputes
+  completionRate Float     // Calculated completion rate (0.0 to 1.0)
+  updatedAt      DateTime  @updated
+
+  createdAt DateTime @default(now())
 }
