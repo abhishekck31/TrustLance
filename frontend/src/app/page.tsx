@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import HealthDashboard from '@/components/HealthDashboard';
+import HealthDashboard, { HealthData } from '@/components/HealthDashboard';
 
 export default function DashboardPage() {
   const [healthData, setHealthData] = useState<HealthData | null>(null);

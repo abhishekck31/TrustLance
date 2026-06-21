@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 
-interface HealthData {
+export interface HealthData {
   platformName: string;
   tvl: number;
   totalDisputes: number;

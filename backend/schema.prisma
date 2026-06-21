@@ -1,6 +1,5 @@
-// Define the database schema using Prisma for persistent storage (for tracking notifications if needed).
 datasource db {
-  provider = "postgresql"
+  provider = postgresql
   url      = env("DATABASE_URL")
 }
 
@@ -8,14 +7,23 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Notification {
-  id          Int      @id @default(autoincrement())
-  recipient  String
-  message    String
-  timestamp   DateTime @default(now())
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+model Subscription {
+  id          String   @id @default(cuid())
+  userId      String
+  planName    String
+  amount      Float     // Monthly recurring amount
+  startDate   DateTime
+  status      String    // e.g., ACTIVE, CANCELED
+  createdAt   DateTime  @default(now())
 }
 
-// Redis setup simulation (Prisma handles DB, but we assume Redis is used for the real-time channel)
-// Note: In a real implementation, Redis connectivity would be handled via specific libraries.
+model MRRMetric {
+  id             String    @id @default(cuid())
+  monthYear      String    @unique // Format: YYYY-MM (e.g., 2024-05)
+  totalMRR       Float
+  totalChurn     Float
+  calculatedAt   DateTime  @default(now())
+}
+
+// Example of how we might store aggregated metrics if needed, though the service will calculate dynamically.
+// For this implementation, we focus on using the Subscription model for calculation.
