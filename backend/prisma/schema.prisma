@@ -1,3 +1,4 @@
+// Define the database structure for tracking proof data off-chain
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,24 +8,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?
-  bookmarks Bookmark[]
-}
-
-model Bookmark {
+model NftProof {
   id          Int      @id @default(autoincrement())
-  userId      Int
-  title       String
-  url         String
-  isJob       Boolean  // True for Job, False for Favorite
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
+  projectId   Int      @unique
+  proofHash   BigInt    // Store the PoW hash as a large integer
+  details     String
+  status      String   @default("PENDING_VERIFICATION")
+  createdAt   DateTime  @default(now())
 }
-
-// We need a way to link the blockchain data (which is immutable) 
-// with off-chain management. For simplicity here, we focus on the relational model.
-// In a real system, a synchronization layer would connect these.

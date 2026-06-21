@@ -1,29 +1,45 @@
+// Backend setup using Node.js/Express for potential off-chain data management or transaction indexing
 const express = require('express');
-const dotenv = require('dotenv');
-const connectDB = require('./lib/db'); // Assumes this handles Prisma client setup
-const analyticsRoutes = require('./routes/analyticsRoutes');
-
-// Load environment variables
-dotenv.config();
-
+const { PrismaClient } = require('@prisma/client');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3001;
 
-// Connect to the database (Prisma)
-connectDB();
+// Assuming Prisma client is initialized (requires a schema setup)
+const prisma = new PrismaClient();
 
-// Middleware
 app.use(express.json());
 
-// Routes
-app.use('/api/analytics', analyticsRoutes);
+// --- Placeholder for Web3 interaction (requires Ethers.js integration) ---
+// In a real application, this would connect to a wallet and sign transactions.
+app.post('/api/mint', async (req, res) => {
+    try {
+        const { projectId, proofHash, details } = req.body;
 
-// Basic Root Route
-app.get('/', (req, res) => {
-    res.send('TrustLance Revenue Analytics API Running');
+        // 1. Backend PoW Validation Check (Simulation)
+        if (!proofHash || typeof proofHash !== 'number' || proofHash === 0) {
+            return res.status(400).json({ error: "Invalid proof hash provided." });
+        }
+
+        // 2. Data persistence simulation (would typically be done via blockchain interaction)
+        const newNftData = await prisma.nftProof.create({
+            data: {
+                projectId: parseInt(projectId),
+                proofHash: parseInt(proofHash),
+                details: details,
+                status: 'PENDING_VERIFICATION'
+            }
+        });
+
+        console.log(`Off-chain data recorded for Project ID: ${newNftData.projectId}`);
+        res.status(201).json({ message: "Proof recorded successfully", data: newNftData });
+
+    } catch (error) {
+        console.error("Error during mint request:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
 });
 
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+
+app.listen(port, () => {
+    console.log(`Backend server listening at http://localhost:${port}`);
 });
