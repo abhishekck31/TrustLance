@@ -1,0 +1,27 @@
+// Prisma Schema defining the PostgreSQL structure for indexing blockchain events/states
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-generator"
+}
+
+model allocationData {
+  id        Int     @id @db.BigInt
+  description String
+  amount    BigInt
+  recipient Address
+  voteCount Int
+  executed  Boolean
+  createdAt DateTime @default(now())
+  // Add fields for indexing events if using The Graph/Indexer pattern
+}
+
+model governanceState {
+  id        Int     @id @db.BigInt
+  type      String // e.g., 'TreasuryAllocation'
+  data      Json    // Store serialized contract state or key metadata
+  updatedAt DateTime @default(now())
+}
