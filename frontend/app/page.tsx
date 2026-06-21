@@ -1,152 +1,140 @@
-// Main page component for displaying the animated voting results.
-'use client';
+"use client"
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useConnect, useAccount, useReadContract, useWaitForDataFetching } from 'wagmi';
-import { publicProvider } from 'wagmi/providers/public';
-import { ethers } from 'ethers';
-import { ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import { Search, Filter, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input"; // Assuming shadcn components setup
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-// --- Configuration Placeholder ---
-// In a real app, these would be loaded from environment variables or configuration files.
-const CONTRACT_ADDRESS = "0x..."; // Replace with actual contract address
-const ABI = [
-    // Mock ABI snippet for the Governance contract functions used above
-    { name: "castVote", type: "function", inputs: ["uint256", "uint256"], stateMutability: "nonpayable", type: "function" },
-    { name: "getResults", type: "function", inputs: ["uint256"], outputs: ["uint256", "uint256"], stateMutability: "view" },
-    // Add other necessary contract methods...
-];
+// Define the structure for a single freelancer result
+interface Freelancer {
+    id: string;
+    name: string;
+    skill: string;
+    rating: number;
+}
 
-export default function GovernanceResults() {
-    const { address, isConnected } = useAccount();
-    const { data: resultsData, error: readError, isError } = useReadContract({
-        address: CONTRACT_ADDRESS,
-        abi: ABI,
-        functionName: 'getResults',
-        args: [1], // Fetch results for Vote ID 1
-    });
-    const { isLoading: loading, isSuccess: isSuccessData, data: voteStatus } = useWaitForDataFetching({
-        address: CONTRACT_ADDRESS,
-        functionName: 'getResults',
-        args: [1]
-    });
+export default function HomePage() {
+    const [freelancers, setFreelancers] = useState<Freelancer[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [skillFilter, setSkillFilter] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const [status, setStatus] = useState('loading'); // loading, success, error
-    const [animationState, setAnimationState] = useState({ yes: 0, no: 0 });
-    const [lastUpdate, setLastUpdate] = useState(null);
+    const API_URL = "http://localhost:3001/api";
 
-    const fetchResults = useCallback(async () => {
-        if (!isConnected) return;
-        setStatus('loading');
+    const fetchFreelancers = useCallback(async () => {
+        setLoading(true);
+        setError(null);
         try {
-            // 1. Attempt to fetch via Web3 ReadContract (for standard data sync)
-            const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI);
-            const [yes, no] = await contract.getResults(1);
+            // Construct the query based on state
+            const params = new URLSearchParams();
+            if (searchTerm) {
+                params.append("searchName", searchTerm);
+            }
+            if (skillFilter) {
+                params.append("searchSkill", skillFilter);
+            }
 
-            // 2. If we had real-time listeners (e.g., using window.ethereum event listeners or subscription), this is where the animation hook would trigger.
-            setAnimationState({ yes, no });
-            setLastUpdate(new Date());
-            setStatus('success');
-
+            const response = await axios.get(`${API_URL}/freelancers?${params.toString()}`);
+            setFreelancers(response.data);
         } catch (err) {
-            console.error("Error fetching data:", err);
-            setStatus('error');
+            setError("Failed to fetch freelancers. Is the backend running?");
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
-    }, [isConnected]);
+    }, [searchTerm, skillFilter]);
 
-
-    // Effect to trigger initial fetch and potentially handle chain events in a production environment
+    // Initial load and debounced search handler would go here in a full implementation
     useEffect(() => {
-        if (isConnected) {
-            fetchResults();
-            
-            // --- Simulation of Animation/Real-time Update ---
-            // In a live scenario, this block would be replaced by a subscription hook 
-            // listening for the 'ResultsUpdated' event emitted by the contract.
-            const interval = setInterval(() => {
-                // Simulate result fluctuation for animation effect
-                const newYes = Math.floor(Math.random() * 10) + 45;
-                const newNo = 100 - newYes;
-                setAnimationState({ yes: newYes, no: newNo });
-            }, 3000);
-
-            return () => clearInterval(interval);
-        }
-    }, [isConnected, fetchResults]);
+        fetchFreelancers();
+    }, [fetchFreelancers]);
 
 
-    if (!isConnected) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mr-2" />
-                <p className="text-lg text-gray-700">Connect Wallet to view results</p>
-            </div>
-        );
-    }
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchFreelancers();
+    };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8 font-sans">
-            <header className="mb-8 pb-4 border-b border-indigo-200">
-                <h1 className="text-4xl font-extrabold text-indigo-700 flex items-center">
-                    Governance Results
-                </h1>
-                <p className="text-gray-600 mt-2">Vote ID: 1 Animation Demo</p>
+        <div className="p-8 bg-gray-50 min-h-screen">
+            <header className="mb-10">
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">Freelancer Discovery Engine</h1>
+                <p className="text-lg text-gray-600">Find top talent based on skills and reputation.</p>
             </header>
 
-            {status === 'loading' && (
-                 <div className="flex justify-center items-center h-64">
-                    <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
-                    <p className="ml-3 text-xl text-indigo-600">Calculating results...</p>
-                </div>
-            )}
-
-            {status === 'error' && (
-                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <span className="block sm:inline">Error loading results. Check connection and contract address.</span>
-                </div>
-            )}
-
-            {status === 'success' && (
-                <div className="bg-white shadow-xl rounded-xl p-8 max-w-4xl mx-auto border-t-4 border-indigo-500">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <h2 className="text-3xl font-bold text-gray-900">Vote Summary</h2>
-                        <span className={`px-4 py-1 rounded-full text-sm font-medium ${animationState.yes > animationState.no ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {animationState.yes > 50 ? "Majority Yes" : "Mixed Results"}
-                        </span>
-                    </div>
-
-                    {/* Animated Result Display */}
-                    <div className="flex items-center justify-center h-48 md:h-64 bg-indigo-50 rounded-lg shadow-inner mb-8">
-                        {/* Yes Bar (Animated) */}
-                        <div 
-                            className="w-1/2 p-4 flex flex-col justify-center items-start transition-all duration-1000 ease-in-out bg-green-500 shadow-lg text-white"
-                            style={{ width: `${(animationState.yes / 100) * 100}%` }}
-                        >
-                            <div className="text-xl font-semibold mb-2">YES</div>
-                            <div className="text-3xl font-bold">{animationState.yes}%</div>
+            {/* Search and Filter Panel */}
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8 border">
+                <form onSubmit={handleSearch} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Search by Name</label>
+                            <Input
+                                id="name"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="e.g., Developer"
+                                className="w-full"
+                            />
                         </div>
-
-                        {/* No Bar (Animated) */}
-                        <div 
-                            className="w-1/2 p-4 flex flex-col justify-center items-start transition-all duration-1000 ease-in-out bg-red-500 shadow-lg text-white"
-                            style={{ width: `${(animationState.no / 100) * 100}%` }}
-                        >
-                            <div className="text-xl font-semibold mb-2">NO</div>
-                            <div className="text-3xl font-bold">{animationState.no}%</div>
+                        <div>
+                            <label htmlFor="skill" className="block text-sm font-medium text-gray-700 mb-1">Filter by Skill</label>
+                            <Input
+                                id="skill"
+                                value={skillFilter}
+                                onChange={(e) => setSkillFilter(e.target.value)}
+                                placeholder="e.g., Solidity"
+                                className="w-full"
+                            />
+                        </div>
+                         <div className="flex items-end">
+                            <Button type="submit" className="w-full">
+                                <Search className="w-4 h-4 mr-2" /> Search
+                            </Button>
                         </div>
                     </div>
+                </form>
 
-                    <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                        <p className="font-semibold text-gray-700">Current State:</p>
-                        <p className="text-lg mt-1">Total Yes: <span className="font-bold text-green-600">{animationState.yes}</span></p>
-                        <p className="text-lg">Total No: <span className="font-bold text-red-600">{animationState.no}</span></p>
+                {error && (
+                    <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {error}
                     </div>
-                    
-                     <div className="mt-4 text-sm text-gray-500 text-center">
-                        Last Updated: {lastUpdate ? lastUpdate.toLocaleTimeString() : 'N/A'}
-                    </div>
+                )}
+            </div>
+
+            {/* Results Display */}
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Discovery Results ({freelancers.length})</h2>
+
+            {loading && <div className="flex justify-center items-center py-10"><Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading...</div>}
+
+            {!loading && freelancers.length === 0 && (
+                <div className="text-center p-10 bg-white rounded-lg shadow-md">
+                    <p className="text-gray-500">No freelancers found matching your criteria.</p>
                 </div>
             )}
+
+            <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+                {freelancers.map((f) => (
+                    <Card key={f.id} className="shadow-lg transition duration-300 hover:shadow-xl border-l-4 border-blue-500">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-xl font-semibold">{f.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pt-2">
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                <span className="flex items-center font-bold text-blue-600">
+                                    <Filter className="w-4 h-4 mr-1" /> Skill: {f.skill}
+                                </span>
+                                <span className="flex items-center font-bold text-green-600">
+                                    <Search className="w-4 h-4 mr-1" /> Rating: {f.rating}/5
+                                </span>
+                            </div>
+                            <p className="text-sm italic">{f.bio}</p>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
         </div>
     );
 }
