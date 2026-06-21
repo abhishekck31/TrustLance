@@ -1,83 +1,78 @@
-// This contract manages the listing and featured status of talents on TrustLance.
-// Uses OpenZeppelin for standard security practices.
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract TalentRegistry is Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _talentIds;
+
     struct Talent {
         uint256 id;
-        address talentAddress;
         string name;
+        string description;
+        address owner; // The talent owner/creator
         bool isFeatured;
-        uint256 listingTimestamp;
+        uint256 featuredTier; // e.g., 1 for Basic, 2 for Premium
     }
 
-    mapping(uint256, Talent) public talents;
-    uint256 public nextTalentId = 1;
+    mapping(uint256 => Talent) public talents;
+    mapping(address => uint256) public userTalentIds; // Maps user to their talent IDs
 
-    event TalentRegistered(uint256 id, address indexed talentAddress);
-    event FeaturedStatusUpdated(uint256 id, bool isFeatured);
+    event TalentRegistered(uint256 indexed talentId, address indexed owner);
+    event TalentFeatured(uint256 indexed talentId, uint256 tier);
 
-    modifier onlyTalent(uint256 _id) {
-        require(talents[_id].talentAddress == msg.sender, "Caller is not the owner of this talent listing.");
-        _;
-    }
+    constructor() Ownable(msg.sender) {}
 
-    /**
-     * @dev Registers a new talent listing.
-     * @param _name The name of the talent.
-     */
-    function registerTalent(string memory _name) public {
-        uint256 newId = nextTalentId;
-        talents[newId] = Talent(newId, msg.sender, _name, false, block.timestamp);
-        nextTalentId++;
+    function registerTalent(string memory _name, string memory _description) public returns (uint256) {
+        _talentIds.increment();
+        uint256 newId = _talentIds.current();
+
+        talents[newId] = Talent{
+            id: newId,
+            name: _name,
+            description: _description,
+            owner: msg.sender,
+            isFeatured: false,
+            featuredTier: 1 // Default to basic tier if not featured
+        };
+
+        userTalentIds[msg.sender] = newId;
+
         emit TalentRegistered(newId, msg.sender);
+        return newId;
     }
 
-    /**
-     * @dev Marks a talent as featured. Requires the caller to be the owner/admin (simplified here by using Ownable).
-     * NOTE: In a real system, this logic would be heavily gated by DAO or specific roles.
-     * @param _id The ID of the talent to feature.
-     */
-    function setTalentAsFeatured(uint256 _id) public onlyOwner {
-        require(_id > 0 && _id < nextTalentId, "Invalid Talent ID");
-        if (!talents[_id].isFeatured) {
-            talents[_id].isFeatured = true;
-            emit FeaturedStatusUpdated(_id, true);
+    function featureTalent(uint256 _talentId, uint256 _tier) public onlyOwner {
+        require(_talentIds.current() > 0, "No talents registered");
+        require(talents[_talentId].owner != address(0), "Invalid talent ID");
+
+        if (talents[_talentId].id == 0) {
+            revert("Talent does not exist");
         }
+
+        talents[_talentId].isFeatured = true;
+        talents[_talentId].featuredTier = _tier;
+
+        emit TalentFeatured(_talentId, _tier);
     }
 
-    /**
-     * @dev Marks a talent as unfeatured.
-     * @param _id The ID of the talent to unfeature.
-     */
-    function setTalentAsUnfeatured(uint256 _id) public onlyOwner {
-        require(_id > 0 && _id < nextTalentId, "Invalid Talent ID");
-        if (talents[_id].isFeatured) {
-            talents[_id].isFeatured = false;
-            emit FeaturedStatusUpdated(_id, false);
-        }
-    }
-
-    /**
-     * @dev Retrieves talent details.
-     */
-    function getTalentDetails(uint256 _id) public view returns (
-        uint256,
-        address,
-        string,
-        bool,
-        uint256
+    function getTalentDetails(uint256 _talentId) public view returns (
+        uint256, string memory, string memory, bool, uint256
     ) {
-        require(_id > 0 && _id < nextTalentId, "Invalid Talent ID");
+        Talent storage t = talents[_talentId];
         return (
-            talents[_id].id,
-            talents[_id].talentAddress,
-            talents[_id].name,
-            talents[_id].isFeatured,
-            talents[_id].listingTimestamp
+            t.id,
+            t.name,
+            t.description,
+            t.isFeatured,
+            t.featuredTier
         );
+    }
+
+    function getTalentOwner(uint256 _talentId) public view returns (address) {
+        return talents[_talentId].owner;
     }
 }
