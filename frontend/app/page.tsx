@@ -1,45 +1,79 @@
-// This file serves as the main entry point for the Wallet Experience dashboard.
-import { useAccount } from 'wagmi';
-import Avatar from '@/components/WalletAvatar';
-import BalancePreview from '@/components/BalancePreview';
-import ENSResolver from '@/components/ENSResolver';
-import NetworkBadge from '@/components/NetworkBadge';
+// Implementing the page component with Framer Motion for content transitions.
+'use client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function WalletExperiencePage() {
-  const { address, isConnected } = useAccount();
+// Define a transition variant
+const pageVariants = {
+  initial: { opacity: 0, x: -50 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 50 },
+};
+
+export default function HomePage() {
+  const router = useRouter();
+  const [page, setPage] = useState('home');
+
+  // Simple state management to trigger transitions (simulating navigation)
+  const navigate = (newPage: string) => {
+    setPage(newPage);
+    // In a real application, this would be handled by Next.js routing, 
+    // but here we use state change to demonstrate Framer Motion transitions explicitly.
+    setTimeout(() => {
+        router.push(`/${newPage}`);
+    }, 100); // Slight delay for visual effect before route push
+  };
+
+  const itemVariants = {
+    animate: {
+      transition: {
+        duration: 0.3, // Target transition time: 150ms - 300ms range
+        ease: 'easeInOut',
+      },
+    },
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8 flex flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold mb-8 text-indigo-400">TrustLance Wallet Experience</h1>
+    <div className="min-h-screen bg-gray-50 p-8">
+      {/* AnimatePresence is crucial for detecting when elements are removed/added */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={page}
+          variants={pageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="p-6 bg-white shadow-xl rounded-lg max-w-4xl mx-auto"
+          style={{ opacity: page === 'home' ? 1 : 0 }} // Manual control for visibility during exit
+        >
+          {page === 'home' && (
+            <>
+              <h1 className="text-3xl font-bold text-indigo-600 mb-4">Welcome Home</h1>
+              <p className="text-gray-700">This is the main landing page. Click navigation to see smooth transitions.</p>
+              <button 
+                onClick={() => navigate('about')} 
+                className="mt-6 px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition"
+              >
+                Go to About Page
+              </button>
+            </>
+          )}
 
-      {isConnected ? (
-        <div className="w-full max-w-3xl space-y-6 bg-gray-800 p-6 rounded-lg shadow-2xl border border-gray-700">
-          
-          {/* 1. Wallet Avatar */}
-          <div className="flex items-center space-x-4 border-b pb-4 border-gray-700">
-            <Avatar address={address} />
-            <div>
-              <p className="text-xl font-semibold text-green-400">Connected Address:</p>
-              <p className="text-sm truncate">{address}</p>
-            </div>
-          </div>
-
-          {/* 2. Balance Preview */}
-          <BalancePreview address={address} />
-
-          {/* 3. ENS Support */}
-          <ENSResolver address={address} />
-
-          {/* 4. Network Badge */}
-          <NetworkBadge address={address} />
-
-        </div>
-      ) : (
-        <div className="p-6 bg-red-900 border border-red-600 rounded-lg">
-          <h2 className="text-2xl font-semibold text-red-400">Not Connected</h2>
-          <p className="mt-2">Connect your wallet to access your TrustLance data.</p>
-        </div>
-      )}
+          {page === 'about' && (
+            <>
+              <h1 className="text-3xl font-bold text-green-600 mb-4">About TrustLance</h1>
+              <p className="text-gray-700">TrustLance is a cutting-edge Web3 monorepo built with Next.js, Solidity, and robust backend services.</p>
+               <button 
+                onClick={() => navigate('home')} 
+                className="mt-6 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+              >
+                Go back Home
+              </button>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

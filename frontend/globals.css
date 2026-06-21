@@ -1,9 +1,9 @@
-/* Base Tailwind setup, ensuring smooth transitions are respected */
+/* Ensuring Tailwind setup is present, and adding necessary base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Customizing scrollbar for aesthetics (optional but enhances look) */
-body {
+/* Custom styles for potential smooth transitions if needed beyond pure Framer Motion utility classes */
+html {
     scroll-behavior: smooth;
 }
