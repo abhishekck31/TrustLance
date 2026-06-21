@@ -1,3 +1,4 @@
+// Defines the database schema for persistence and analytics.
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -7,12 +8,23 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model PlatformHealth {
-  id             Int      @id @default(autoincrement())
-  tvl            Float     // Total Value Locked (e.g., in USD)
-  totalDisputes  Int       // Total number of active disputes
-  completionRate Float     // Calculated completion rate (0.0 to 1.0)
-  updatedAt      DateTime  @updated
+// Model to store user cohort definitions derived from on-chain events or off-chain logging.
+model Cohort {
+  id          Int      @id @default(autoincrement())
+  cohortId    Int      @unique
+  memberAddress String // Address of the user who started the cohort
+  startDateMonth Int     // Month (1-12) the cohort began
 
-  createdAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+}
+
+// Model to track monthly activity within a specific cohort for retention calculation.
+model CohortActivity {
+  id          Int      @id @default(autoincrement())
+  cohortId    Int
+  activityMonth Int     // Month the activity occurred (e.g., 1 for the first month, 2 for the second)
+  userAddress String // Redundant but useful for fast lookups
+  metricValue Float   // A quantifiable metric (e.g., total transactions, TVL, total items held)
+
+  cohort      Cohort   @relation(fields: [cohortId], references: [id])
 }
