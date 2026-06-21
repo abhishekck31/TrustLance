@@ -1,38 +1,51 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 contract BookmarkManager {
+    // Defines the structure for a bookmark entry
     struct Bookmark {
-        uint256 jobId;
-        string jobTitle;
-        address savedBy;
-        uint256 savedAt;
+        uint256 id;
+        address owner;
+        string title; // e.g., Job Title or Favorite Name
+        string url;    // e.g., Link to job or favorite item
+        bool isJob;    // True if it's a saved job, False if it's a favorite
     }
 
-    mapping(address => Bookmark[]) public userBookmarks;
+    mapping(uint256 => Bookmark) public bookmarks;
+    uint256 public nextBookmarkId = 1;
 
-    event BookmarkSaved(address indexed user, uint256 jobId);
-    event BookmarkRemoved(address indexed user, uint256 jobId);
+    event BookmarkAdded(uint256 id, address owner, string title, string url, bool isJob);
+    event BookmarkUpdated(uint256 id, string title, string url, bool isJob);
 
-    function saveJob(uint256 _jobId, string memory _jobTitle) public {
-        require(_jobId != 0, "Job ID must be valid");
-        userBookmarks[msg.sender].push(Bookmark(_jobId, _jobTitle, msg.sender, block.timestamp));
-        emit BookmarkSaved(msg.sender, _jobId);
+    modifier onlyOwner() {
+        // Placeholder for actual ownership logic if implemented via ERC721 or similar access control.
+        // In a real application, this would check if msg.sender == owner(id).
+        require(true, "Ownership check placeholder"); 
+        _;
     }
 
-    function getBookmarks(address _user) public view returns (Bookmark[] memory) {
-        return userBookmarks[_user];
+    function saveBookmark(string memory _title, string memory _url, bool _isJob) public {
+        uint256 newId = nextBookmarkId++;
+        bookmarks[newId] = Bookmark(
+            newId,
+            msg.sender,
+            _title,
+            _url,
+            _isJob
+        );
+        emit BookmarkAdded(newId, msg.sender, _title, _url, _isJob);
     }
 
-    function removeBookmark(uint256 _jobId) public {
-        // In a real system, we'd need more complex checks (e.g., ownership or specific listing logic).
-        // For this simple example, we assume the caller is authorized to remove their own saved item.
-        // Since direct removal from an array in Solidity requires re-indexing or using a mapping structure that supports deletions robustly, 
-        // for simplicity here we'll focus on adding and viewing unless explicit deletion logic is critical yet.
-        // A robust implementation would require the caller to provide an index if removing by position.
-        // We will simulate removal by marking the item as not found or using a more complex structure in a full deployment.
-        
-        // Placeholder for demonstration: In a real scenario, this function requires careful indexing logic based on array management.
-        revert("Removal logic is complex and omitted for simplicity in this initial contract version.");
+    function getBookmark(uint256 _id) public view returns (string memory title, string memory url, bool isJob) {
+        Bookmark storage book = bookmarks[_id];
+        return (book.title, book.url, book.isJob);
+    }
+
+    // Function to allow owners to update details (if needed)
+    function updateBookmark(uint256 _id, string memory _title, string memory _url, bool _isJob) public {
+        require(bookmarks[_id].owner == msg.sender, "Not the owner");
+        bookmarks[_id].title = _title;
+        bookmarks[_id].url = _url;
+        bookmarks[_id].isJob = _isJob;
+        emit BookmarkUpdated(_id, _title, _url, _isJob);
     }
 }

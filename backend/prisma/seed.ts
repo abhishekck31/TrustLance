@@ -1,24 +1,57 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client';
+import { hash } from 'crypto';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function main() {
-  await prisma.hiringOpportunity.createMany({
+  console.log('Seeding database...');
+
+  // Simulate creating a user and their bookmarks for testing the relational structure
+  const userId1 = 1;
+  const userId2 = 2;
+
+  await prisma.user.create({
+    data: {
+      id: userId1,
+      email: 'user1@example.com',
+      username: 'dev_user',
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      id: userId2,
+      email: 'user2@example.com',
+      username: 'fav_user',
+    },
+  });
+
+  // Seed bookmarks linked to User 1
+  await prisma.bookmark.createMany({
     data: [
-      { title: "Senior Blockchain Developer", description: "Develop smart contracts and DeFi protocols.", location: "Remote", type: "Full-time", salary: 150000.00 },
-      { title: "Frontend Web3 Specialist", description: "Build engaging dApps with React and Web3 libraries.", location: "New York", type: "Full-time", salary: 120000.00 },
-      { title: "Contract Solidity Auditor", description: "Review security of existing smart contracts.", location: "London", type: "Contract", salary: 80000.00 },
-      { title: "Community Manager (Crypto)", description: "Manage Discord/Telegram communities for Web3 projects.", location: "Remote", type: "Full-time", salary: 60000.00 },
+      {
+        userId: userId1,
+        title: "Web3 Developer Role",
+        url: "https://example.com/job1",
+        isJob: true,
+      },
+      {
+        userId: userId1,
+        title: "Awesome NFT Collection",
+        url: "https://example.com/favs",
+        isJob: false,
+      }
     ],
-  })
-  console.log('Seeding complete')
+  });
+
+  console.log('Seeding complete.');
 }
 
 main()
   .catch(e => {
-    console.error(e)
-    process.exit(1)
+    console.error(e);
+    process.exit(1);
   })
-  .finally(() => {
-    prisma.$disconnect()
-  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

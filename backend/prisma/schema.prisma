@@ -1,28 +1,30 @@
-// Prisma Schema definition for PostgreSQL interaction
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-// Interface to represent the Solidity Marketplace data stored on-chain (or synced)
-model Listing {
-  id          String @id @default(uuid())
-  category    String
-  title       String
-  price       Float // Stored as Float for simplicity in API, should be BigInt/Wei in production integration
-  seller      String
-  isSold      Boolean @default(false)
-}
-
 model User {
-  id          String @id @default(uuid())
-  walletAddress String @unique
-  name        String?
-  listings    Listing[]
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?
+  bookmarks Bookmark[]
 }
 
-// Note: In a full setup, we would need models for external contract addresses if interacting directly.
+model Bookmark {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  title       String
+  url         String
+  isJob       Boolean  // True for Job, False for Favorite
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+// We need a way to link the blockchain data (which is immutable) 
+// with off-chain management. For simplicity here, we focus on the relational model.
+// In a real system, a synchronization layer would connect these.
