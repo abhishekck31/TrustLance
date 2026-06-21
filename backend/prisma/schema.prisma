@@ -1,22 +1,29 @@
+// Defines the PostgreSQL schema for managing off-chain state and audit logs.
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+// Model to track juror data managed by the backend system
+model JurorPayouts {
+  id              Int      @id @default(autoincrement())
+  jurorId         Int      @unique
+  jurorAddress    String
+  rewardAmount    BigInt    // Storing amounts as BigInt for precision
+  status          String   @default("PENDING_DISTRIBUTION") // PENDING_DISTRIBUTION, DISTRIBUTED, FAILED
+  triggeredAt     DateTime? @default(now())
+  blockchainTxHash String? // Hash of the transaction sent to the blockchain
 }
 
-model Activity {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String
-  date        DateTime
-  type       String // e.g., 'Deployment', 'Feature Release', 'Audit'
-  details     String?
-  createdAt   DateTime @default(now())
-
-  // Optional: Link to an optional user if permissions matter
-  // userId     Int?
-  // user        User? @relation(fields: [userId], references: [id])
+// Example additional model for audit logging (optional but recommended)
+model AuditLog {
+    id          Int      @id @default(autoincrement())
+    timestamp   DateTime @default(now())
+    action      String
+    details     String
+    relatedId   Int?
 }

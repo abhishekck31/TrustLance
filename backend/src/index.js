@@ -1,56 +1,75 @@
+// Main entry point for the backend service, setting up Express and Redis connections.
 const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
 const { PrismaClient } = require('@prisma/client');
+const redis = require('redis');
+require('dotenv').config();
 
 const app = express();
 const prisma = new PrismaClient();
 
+// --- Redis Setup (For caching or queueing payout triggers) ---
+const redisClient = redis.createClient();
+redisClient.on('error', (err) => console.error('Redis Client Error', err));
+await redisClient.connect();
+
 // Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 
-// AI Analyzer Endpoint
-app.post('/api/analyze-evidence', async (req, res) => {
-  const { title, submissionData } = req.body;
+// --- API Routes ---
 
-  if (!title || !submissionData) {
-    return res.status(400).json({ error: "Title and submissionData are required for analysis." });
-  }
+/**
+ * Endpoint to trigger the automated reward distribution process.
+ * This simulates an off-chain service calling or monitoring on-chain events 
+ * and triggering state changes if necessary, or initiates a manual final step.
+ */
+app.post('/api/payout/trigger/:jurorId', async (req, res) => {
+    const { jurorId } = req.params;
+    const jurorIdNum = parseInt(jurorId);
 
-  try {
-    // --- AI Processing Simulation ---
-    // In a real application, this is where you would call an external LLM API (e.g., OpenAI, Gemini)
-    const prompt = `Analyze the following dispute evidence and provide a concise summary of the key claims and counterclaims. Evidence: "${submissionData}"`;
-    
-    // Simulate AI response time and generation
-    console.log("Simulating AI analysis for title:", title);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network latency
+    if (isNaN(jurorIdNum)) {
+        return res.status(400).json({ error: "Invalid Juror ID provided." });
+    }
 
-    const aiSummary = `[AI ANALYSIS for ${title}]: Based on the provided evidence, the core dispute revolves around ${submissionData.substring(0, 50)}... The analysis suggests Claim A is supported by X data, while Counterclaim B requires further verification from Y documents.`;
-    // --- End Simulation ---
+    console.log(`Attempting to trigger payout for Juror ID: ${jurorIdNum}`);
 
-    // Store result (or save evidence path if files were uploaded)
-    const newEvidence = await prisma.disputeEvidence.create({
-      title: title,
-      submissionData: submissionData,
-      analysisResult: aiSummary,
-    });
+    try {
+        // 1. Check Off-Chain State (Prisma/DB) - Verification step
+        // In a production system, this step would involve reading the current status from PostgreSQL
+        // and ensuring the on-chain state matches or processing external verification logs.
+        const offChainData = await prisma.jurorPayouts.findUnique({ where: { jurorId: jurorIdNum } });
 
-    res.status(200).json({ 
-        message: "Evidence successfully analyzed and summarized.", 
-        evidenceId: newEvidence.id,
-        summary: aiSummary
-    });
+        if (!offChainData) {
+             return res.status(404).json({ message: `Juror ID ${jurorIdNum} record not found on backend.` });
+        }
 
-  } catch (error) {
-    console.error("Error during evidence analysis:", error);
-    res.status(500).json({ error: "Failed to process evidence.", details: error.message });
-  }
+        // 2. Initiate On-Chain Call (Simulated Automation Step)
+        // This step would typically involve signing a transaction using a private key (e.g., from a service wallet)
+        // to call the 'distributeReward' function on the JurorRewards contract.
+        console.log(`Successfully verified state. Preparing transaction for on-chain payout of ${offChainData.rewardAmount} for ID ${jurorIdNum}.`);
+
+        // --- REAL AUTOMATION NOTE ---
+        // In a fully automated system, this block would use ethers/web3.js to sign and send the transaction:
+        /*
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI);
+        const tx = await contract.distributeReward(jurorIdNum, { value: offChainData.rewardAmount });
+        await tx.wait();
+        */
+
+        res.status(200).json({ 
+            message: `Payout automation initiated successfully for Juror ID ${jurorIdNum}. Check blockchain for final transaction status.`,
+            requiredAction: 'Manual block confirmation or external bridge verification needed for actual token transfer.'
+        });
+
+    } catch (error) {
+        console.error("Error during payout trigger:", error);
+        res.status(500).json({ error: "Failed to process payout trigger.", details: error.message });
+    }
 });
 
-const PORT = 3001;
+
+// --- Start Server ---
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`TrustLance Backend running on http://localhost:${PORT}`);
+    console.log("Ready to automate Juror Reward Distribution.");
 });
