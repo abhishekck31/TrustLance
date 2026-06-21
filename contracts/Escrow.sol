@@ -1,68 +1,116 @@
-// Add necessary events and modifiers if needed, ensuring imports are correct from the definition above.
-// Note: In a real setup, we would define all functions precisely in one file.
-// For this demonstration structure, we ensure the required state transition logic is present.
+// Escrow contract for managing Job -> Funded -> Completed workflows
+pragma solidity ^0.8.20;
 
-// Re-structuring for clarity based on standard Solidity practice (as the previous block was conceptual)
-contract Escrow {
-    enum JobStatus {
-        PENDING,      // Job initiated, waiting for funding
-        FUNDED,       // Funds received, awaiting completion work
-        COMPLETED,    // Work verified and completed
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract Escrow is Ownable {
+    enum EscrowState {
+        PENDING_FUNDING,
+        FUNDED,
+        COMPLETED,
         FAILED
     }
 
     struct Job {
         uint256 jobId;
-        address payable payableTo; // The party receiving the funds (or contract)
-        uint256 amount;            // Total amount agreed upon
-        JobStatus status;          // Current stage of the funnel
-        string description;       // Job details
+        address payable funder;
+        address payable executor;
+        uint256 amount;
+        EscrowState state;
     }
 
     mapping(uint256, Job) public jobs;
     uint256 public nextJobId = 1;
 
-    event JobCreated(uint256 indexed jobId);
-    event JobFunded(uint256 indexed jobId);
-    event JobCompleted(uint256 indexed jobId);
+    event JobCreated(uint256 indexed jobId, address indexed funder, address indexed executor, uint256 amount);
+    event Funded(uint256 indexed jobId);
+    event Completed(uint256 indexed jobId);
 
-    modifier onlyJobExists(uint256 _jobId) {
-        require(jobs[_jobId].jobId != 0, "Job does not exist");
+    modifier onlyJobOwner(uint256 _jobId) {
+        require(jobs[_jobId].funder == msg.sender || jobs[_jobId].executor == msg.sender, "Sender is not the funder or executor");
         _;
     }
 
-    function initiateJob(address payable _payee, uint256 _amount, string memory _description) public payable {
-        require(msg.value == _amount, "Amount mismatch");
+    /**
+     * @notice Initiates a new job escrow.
+     * @param _amount The amount to be escrowed.
+     * @param address_executor The address of the person hired to complete the job.
+     */
+    function createJob(uint256 _amount, address_executor) public payable {
+        require(msg.value == _amount, "Sent amount does not match requested amount");
 
         uint256 newJobId = nextJobId++;
         jobs[newJobId] = Job({
             jobId: newJobId,
-            payableTo: _payee,
+            funder: payable(msg.sender),
+            executor: payable(address_executor),
             amount: _amount,
-            status: JobStatus.PENDING,
-            description: _description
+            state: EscrowState.PENDING_FUNDING
         });
 
-        emit JobCreated(newJobId);
+        emit JobCreated(newJobId, msg.sender, address_executor, _amount);
     }
 
+    /**
+     * @notice Allows the funder to release funds upon job completion.
+     * @param _jobId The ID of the job to fund.
+     */
     function fundJob(uint256 _jobId) public {
         Job storage job = jobs[_jobId];
-        require(job.status == JobStatus.PENDING, "Cannot fund a job that is not pending");
+        require(job.state == EscrowState.PENDING_FUNDING, "Job is not in PENDING_FUNDING state");
+        require(msg.sender == job.funder, "Only the funder can trigger funding release");
 
-        jobs[_jobId].status = JobStatus.FUNDED;
-        emit JobFunded(_jobId);
+        jobs[_jobId].state = EscrowState.FUNDED;
+        emit Funded(_jobId);
     }
 
+    /**
+     * @notice Allows the executor to mark the job as completed, triggering final release.
+     * @param _jobId The ID of the job to complete.
+     */
     function completeJob(uint256 _jobId) public {
         Job storage job = jobs[_jobId];
-        require(job.status == JobStatus.FUNDED, "Cannot complete a job that is not funded");
+        require(job.state == EscrowState.FUNDED, "Job is not in FUNDED state");
+        require(job.executor == msg.sender, "Only the executor can mark the job as completed");
 
-        jobs[_jobId].status = JobStatus.COMPLETED;
-        emit JobCompleted(_jobId);
+        jobs[_jobId].state = EscrowState.COMPLETED;
+        emit Completed(_jobId);
     }
 
-    function getJobStatus(uint256 _jobId) public view returns (JobStatus) {
-        return jobs[_jobId].status;
+    /**
+     * @notice Allows the funder to withdraw funds upon successful completion.
+     * @param _jobId The ID of the job to claim funds from.
+     */
+    function withdrawFunds(uint256 _jobId) public {
+        Job storage job = jobs[_jobId];
+        require(job.state == EscrowState.COMPLETED, "Job must be COMPLETED to withdraw");
+        require(msg.sender == job.funder, "Only the funder can withdraw");
+
+        // In a real scenario, this would call the ERC20 or native transfer mechanism.
+        // For simplicity here, we assume Ether transfers handle the logic.
+        (bool success, ) = payable(msg.sender).call{value: job.amount}(job.amount);
+        require(success, "Transfer failed");
+
+        // Cleanup (optional but good practice)
+        delete jobs[_jobId];
+    }
+
+    /**
+     * @notice Allows the executor to withdraw their share of the escrow amount.
+     * @param _jobId The ID of the job to claim payment from.
+     */
+    function withdrawExecutorShare(uint256 _jobId) public {
+        Job storage job = jobs[_jobId];
+        require(job.state == EscrowState.COMPLETED, "Job must be COMPLETED to withdraw");
+        require(job.executor == msg.sender, "Only the executor can withdraw");
+
+        // Since this contract doesn't manage asset tokens directly, we assume the funder releases 100% here, 
+        // or define a complex split if needed. For simplicity of conversion funnel, the full amount is released to the executor upon completion marker.
+        (bool success, ) = payable(msg.sender).call{value: job.amount}(job.amount);
+        require(success, "Transfer failed");
+
+        // Cleanup
+        delete jobs[_jobId];
     }
 }

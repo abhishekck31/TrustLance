@@ -1,127 +1,134 @@
-// Frontend component to interact with the NFT and display proof details
+// Next.js Frontend page for the Escrow Funnel UI
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
-import { injectProvider } from 'wagmi/middleware';
-import { publicProvider } from 'wagmi/providers/public';
-import { ethers } from 'ethers';
+import { useState } from 'react';
+import { useConnect, useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { href, useArbitraryState } from 'next/link';
+import { formatUnits } from 'ethers/lib/utils';
 
-// Note: In a full setup, contract addresses and ABI would be loaded dynamically.
-const NFT_CONTRACT_ADDRESS = "0x..."; // Placeholder
-const NFT_ABI = [
-    "function name() view returns (string)",
-    "function symbol() view returns (string)",
-    "function tokenIds() view returns (uint256[])",
-    "function projectProofs(uint256) view returns (uint256, uint256, string)",
-];
+// Assume these are configured in wagmi config
+const ESCROW_CONTRACT_ADDRESS = "0x..."; // Placeholder for deployed contract address
+const ESCROW_ABI = [...]; // Placeholder for compiled ABI
+const TOKEN_ADDRESS = "0x..."; // Address of the token being used (e.g., ETH or USDC)
 
-export default function ProofOfWorkNFTPage() {
+export default function EscrowFunnel() {
     const { address, isConnected } = useAccount();
-    const [mintDetails, setMintDetails] = useState('');
-    const [nftAddress, setNftAddress] = useState<string>('');
-    const [proofData, setProofData] = useState<{ hash: string; timestamp: number; details: string } | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    // --- Web3 Read Operations ---
-    const { data: tokenIds, error: tokenError } = useReadContract({
-        address: NFT_CONTRACT_ADDRESS,
-        abi: NFT_ABI,
-        function: "tokenIds",
+    const { data: jobStatus, error: statusError } = useReadContract({
+        address: ESCROW_CONTRACT_ADDRESS,
+        abi: ESCROW_ABI,
+        functionName: 'jobs', // This depends heavily on how the contract exposes jobs (mocking for structure)
+        args: [/* job ID */]
     });
 
-    const fetchProof = async (tokenId: number) => {
+    const { data: transaction, error: txError, writeContract } = useWriteContract();
+
+    const [jobIdInput, setJobIdInput] = useState('');
+    const [amountInput, setAmountInput] = useState('');
+    const [executorAddress, setExecutorAddress] = useState('');
+    const [status, setStatus] = useState('PENDING_JOB');
+    const [loading, setLoading] = useState(false);
+
+    // --- Handlers ---
+
+    const createJob = async () => {
+        if (!isConnected) return alert("Connect wallet to proceed.");
         try {
-            const contract = new ethers.JsonRpcProvider(window.ethereum);
-            const proofTuple = await contract.call({
-                to: NFT_CONTRACT_ADDRESS,
-                data: `getProof(${tokenId})`,
-                type: 'function',
-                inputs: [tokenId]
+            const tx = await writeContract({
+                address: ESCROW_CONTRACT_ADDRESS,
+                abi: ESCROW_ABI,
+                functionName: 'createJob',
+                args: [
+                    BigInt(amountInput), 
+                    ethers.constants.AddressZero // Placeholder for actual address input
+                ],
+                value: parseFloat(amountInput) // Sending ETH/Native token
             });
-
-            // Expects tuple return from Solidity (hash, timestamp, details)
-            const result = proofTuple.result;
-            setProofData({
-                hash: result.proofHash.toString(),
-                timestamp: Number(result.timestamp),
-                details: result.details,
-            });
-        } catch (e) {
-            console.error("Error fetching proof:", e);
-            setProofData(null);
-        }
-    };
-
-    const handleMint = async () => {
-        if (!isConnected || !window.ethereum) {
-            alert("Please connect your wallet.");
-            return;
-        }
-
-        try {
-            // Simulate the external PoW calculation resulting in a hash string for the contract call
-            const mockProofHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MockPoW_Data_For_" + Date.now()));
-
-            // Call the contract to mint
-            const tx = await window.ethereum.request({
-                method: `mintProofOfWorkNFT(${String(1)}, ${mockProofHash}, "Project Alpha - Completed")`, // Using mock ID 1 for simplicity
-                gas: 200000,
-            });
-
-            await tx.wait();
-            console.log("NFT Minted successfully:", tx.hash);
-
+            alert(`Job Created! Tx Hash: ${tx}`);
         } catch (error) {
-            console.error("Minting failed:", error);
-            alert(`Minting Error: ${error.message}`);
+            console.error("Error creating job:", error);
+            alert("Failed to create job.");
         }
     };
 
+    const checkStatus = async (id) => {
+        try {
+            // In a real app, this reads from the contract state directly or calls a getter function
+            const result = await useReadContract({
+                address: ESCROW_CONTRACT_ADDRESS,
+                abi: ESCROW_ABI,
+                functionName: 'jobs', 
+                args: [id]
+            });
+            setStatus(result.state);
+        } catch (error) {
+            setStatus('ERROR');
+        }
+    };
 
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold mb-6 text-indigo-700">Proof-of-Work NFT Minting</h1>
+            <h1 className="text-3xl font-bold mb-6 text-indigo-700">Escrow Conversion Funnel</h1>
+            
+            {/* Step 1: Create Job */}
+            <div className="border p-6 rounded-lg shadow-md mb-8 bg-white">
+                <h2 className="text-xl font-semibold mb-4">1. Initiate Job Escrow</h2>
+                <p className="mb-3">Fund the contract with your intended job amount and specify the executor.</p>
 
-            <div className="mb-8 p-4 border rounded shadow bg-white">
-                <h2 className="text-xl font-semibold mb-3">Mint Project Proof</h2>
-                <p className="mb-4 text-sm text-gray-600">Enter project details. The system will simulate a Proof-of-Work hash for the NFT.</p>
-                <textarea
-                    value={mintDetails}
-                    onChange={(e) => setMintDetails(e.target.value)}
-                    placeholder="Enter detailed description of your completed project..."
-                    rows={4}
-                    className="w-full p-2 border rounded focus:ring-indigo-500 focus:border-indigo-500"
+                <input 
+                    type="number" 
+                    placeholder="Job Amount (ETH)" 
+                    value={amountInput} 
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    className="w-full p-2 border rounded mb-3"
                 />
-                <button
-                    onClick={handleMint}
-                    disabled={loading || !isConnected}
-                    className={`mt-3 w-full py-2 px-4 font-semibold rounded transition duration-150 ${
-                        loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    }`}
+                <input 
+                    type="text" 
+                    placeholder="Executor Address" 
+                    value={executorAddress} 
+                    onChange={(e) => setExecutorAddress(e.target.value)}
+                    className="w-full p-2 border rounded mb-4"
+                />
+                
+                <button 
+                    onClick={createJob}
+                    disabled={!isConnected || !amountInput || !executorAddress}
+                    className={`w-full py-3 font-semibold rounded transition ${isConnected ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'}`}
                 >
-                    {loading ? 'Processing Proof...' : 'Simulate PoW Mint'}
+                    Create & Fund Job
                 </button>
             </div>
 
-            {nftAddress && (
-                <div className="mt-10 p-6 border-t-2 border-indigo-500 bg-white shadow">
-                    <h2 className="text-2xl font-bold mb-4 text-indigo-700">NFT Details</h2>
-                    <p><strong>Wallet Address:</strong> {address}</p>
+            {/* Step 2 & 3: Tracking Funnel */}
+            <div className="border p-6 rounded-lg shadow-md bg-white">
+                <h2 className="text-xl font-semibold mb-4">2. Track Escrow Status</h2>
+                
+                <input 
+                    type="text" 
+                    placeholder="Enter Job ID to Check Status" 
+                    value={jobIdInput} 
+                    onChange={(e) => setJobIdInput(e.target.value)}
+                    className="w-full p-2 border rounded mb-4"
+                />
 
-                    {proofData ? (
-                        <div>
-                            <h3 className="text-lg font-semibold mt-4">Proof Information</h3>
-                            <p><strong>Project Details Stored:</strong> {proofData.details}</p>
-                            <p><strong>Proof Hash (PoW Result):</strong> <code className="block p-2 bg-gray-100">{proofData.hash}</code></p>
-                            <p><strong>Timestamp:</strong> {new Date(proofData.timestamp * 1000).toLocaleString()}</p>
-                        </div>
-                    ) : (
-                        <p className="text-red-500">Proof details are not yet available.</p>
-                    )}
-                </div>
-            )}
+                <button 
+                    onClick={() => checkStatus(jobIdInput)}
+                    disabled={!jobIdInput || loading}
+                    className={`w-full py-3 font-semibold rounded transition ${loading ? 'bg-yellow-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                    {loading ? 'Checking...' : 'Check Status'}
+                </button>
 
+                {status && (
+                    <div className={`mt-4 p-4 rounded-lg font-bold ${status === 'COMPLETED' ? 'bg-green-100 text-green-800' : status === 'FUNDED' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        Current Status: {status}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
+
+// Mock dependency needed for compilation safety in this context
+const ethers = require('ethers'); 
+// In a real setup, wagmi hooks handle much of the Ethers integration.
+export { EscrowFunnel };

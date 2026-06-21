@@ -1,4 +1,4 @@
-// Defines the database schema for persistence and analytics.
+// Defines the database schema for tracking off-chain metadata related to on-chain jobs
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,23 +8,15 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Model to store user cohort definitions derived from on-chain events or off-chain logging.
-model Cohort {
+model EscrowJob {
   id          Int      @id @default(autoincrement())
-  cohortId    Int      @unique
-  memberAddress String // Address of the user who started the cohort
-  startDateMonth Int     // Month (1-12) the cohort began
-
+  jobId       Uint256  @unique
+  funderAddress String
+  executorAddress String
+  amount      BigInt    // Amount in Wei or smallest unit if dealing with token conversions
+  status      String    // PENDING_FUNDING, FUNDED, COMPLETED, FAILED
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
-// Model to track monthly activity within a specific cohort for retention calculation.
-model CohortActivity {
-  id          Int      @id @default(autoincrement())
-  cohortId    Int
-  activityMonth Int     // Month the activity occurred (e.g., 1 for the first month, 2 for the second)
-  userAddress String // Redundant but useful for fast lookups
-  metricValue Float   // A quantifiable metric (e.g., total transactions, TVL, total items held)
-
-  cohort      Cohort   @relation(fields: [cohortId], references: [id])
-}
+// Note: In a full implementation, we would link this model to on-chain events or use external indexing.
