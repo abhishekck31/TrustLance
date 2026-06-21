@@ -1,4 +1,4 @@
-// Define the schema for PostgreSQL interaction, including necessary relations for talent featuring.
+// Prisma Schema definition for PostgreSQL interaction
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,40 +8,21 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Talent {
-  id            String    @id @default(cuid())
-  name          String
-  description   String
-  ownerAddress  String // Ethereum address of the talent owner
-  isFeatured    Boolean   @default(false)
-  featuredTier UInt32    @default(1) // 1: Basic, 2: Premium
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([ownerAddress])
+// Interface to represent the Solidity Marketplace data stored on-chain (or synced)
+model Listing {
+  id          String @id @default(uuid())
+  category    String
+  title       String
+  price       Float // Stored as Float for simplicity in API, should be BigInt/Wei in production integration
+  seller      String
+  isSold      Boolean @default(false)
 }
-
-// Add a separate model for tracking featured status if the contract calls are too complex to fully mirror in DB schema directly.
-// For simplicity here, we will rely on the direct read from contracts but define a simple structure.
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  walletAddress String    @unique // Ethereum address of the user
-  createdAt     DateTime  @default(now())
+  id          String @id @default(uuid())
+  walletAddress String @unique
+  name        String?
+  listings    Listing[]
 }
 
-// Model for tracking featured talent lists (to optimize frontend fetching)
-model FeaturedTalentList {
-  id            String    @id @default(cuid())
-  talentId      String    @unique
-  tier          Int       // Corresponds to featuredTier from contract
-  talentName    String
-  ownerAddress  String
-
-  talent        Talent? @relation(fields: [talentId], references: [id])
-}
-
-
-// To implement this feature fully, the backend needs a way to mirror or aggregate on-chain data.
-// We will focus the API layer on fetching the state required for display.
+// Note: In a full setup, we would need models for external contract addresses if interacting directly.
