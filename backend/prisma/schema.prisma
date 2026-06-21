@@ -7,27 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Freelancer {
-  id          String   @id @default(cuid())
-  address     String   @unique // Ethereum address of the freelancer
-  name        String
-  bio         String
-  skill       String
-  rating      Int      @default(5) // 1 to 5
-  createdAt   DateTime @default(now())
-}
-
-// Example model for search/filter complexity (optional, but good practice)
-model SearchIndex {
-    id        String @id @default(cuid())
-    freelancerId String @unique
-    name      String
-    skill     String
-    createdAt DateTime
-}
-
-
-// Ensure the setup is ready for development environment
-generator client {
-  provider = "prisma-client-js"
+model HiringOpportunity {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  location    String
+  type        String   // e.g., Full-time, Contract
+  postedAt    DateTime @default(now())
+  salary      Float?
 }

@@ -1,16 +1,15 @@
-import HiringDiscovery from '@/components/HiringDiscovery';
+import HiringPage from '@/components/HiringPage'
 
-export default function HiringPage() {
+export default function HiringDiscoveryPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <header className="mb-10 border-b pb-4">
-        <h1 className="text-4xl font-bold text-gray-900">Public Hiring Opportunities</h1>
-        <p className="text-lg text-gray-600 mt-2">Discover open roles available today.</p>
+      <header className="text-center mb-12 border-b pb-4">
+        <h1 className="text-4xl font-extrabold text-gray-900">Public Hiring Discovery</h1>
+        <p className="mt-2 text-lg text-gray-600">Explore exciting Web3 and blockchain opportunities.</p>
       </header>
       <main>
-        {/* The HiringDiscovery component will fetch data from the backend API */}
-        <HiringDiscovery />
+        <HiringPage />
       </main>
     </div>
-  );
+  )
 }
