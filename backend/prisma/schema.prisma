@@ -1,4 +1,5 @@
-// Defines the database schema for tracking off-chain metadata related to on-chain jobs
+// TrustLance Backend Database Schema (PostgreSQL via Prisma)
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -8,15 +9,20 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model EscrowJob {
-  id          Int      @id @default(autoincrement())
-  jobId       Uint256  @unique
-  funderAddress String
-  executorAddress String
-  amount      BigInt    // Amount in Wei or smallest unit if dealing with token conversions
-  status      String    // PENDING_FUNDING, FUNDED, COMPLETED, FAILED
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model Job {
+  id            Int      @id @default(autoincrement())
+  creator       String
+  projectName  String
+  statusId     Int       // Tracks the current stage of the timeline (0=Created, 1=Funded, ..., 5=Released)
+  createdAt     DateTime  @default(now())
+  fundedAt      DateTime?
+  milestoneAt   DateTime?
+  approvedAt    DateTime?
+  releasedAt    DateTime?
+
+  @@index([fundedAt])
+  @@index([milestoneAt])
 }
 
-// Note: In a full implementation, we would link this model to on-chain events or use external indexing.
+// NOTE: For a real application, we would also need a separate table for immutable blockchain events if indexing relies solely on the chain. 
+// Here, we focus on an optimized relational view for backend querying.
