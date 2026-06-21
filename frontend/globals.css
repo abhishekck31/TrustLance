@@ -1,29 +1,9 @@
-/* Define CSS variables using the tokens defined in tailwind.config.js */
+/* Base Tailwind setup, ensuring smooth transitions are respected */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Global CSS Variables for Semantic Tokens */
-:root {
-  /* Background & Surface Colors */
-  --color-background: #F4F4F7; /* Corresponds to --background */
-  --color-card: #FFFFFF;        /* Corresponds to --card */
-
-  /* Primary Action Colors */
-  --color-primary: #3B82F6;     /* Corresponds to --primary */
-  --color-secondary: #6B7280;   /* Corresponds to --secondary */
-
-  /* Status/Feedback Colors */
-  --color-success: #10B981;     /* Corresponds to --success */
-  --color-warning: #F59E0B;     /* Corresponds to --warning */
-  --color-danger: #EF4444;      /* Corresponds to --danger */
+/* Customizing scrollbar for aesthetics (optional but enhances look) */
+body {
+    scroll-behavior: smooth;
 }
-
-/* Apply CSS Variables to Tailwind Classes for easier utility usage (Optional but recommended pattern) */
-.bg-background { background-color: var(--color-background); }
-.bg-card { background-color: var(--color-card); }
-.text-primary { color: var(--color-primary); }
-.border-danger { border-color: var(--color-danger); }
-/* ... and so on for all tokens */
-
-/* Note: In a production setup, you would usually define the actual Tailwind colors directly in tailwind.config.js instead of relying solely on external CSS variables unless using an advanced theme extension setup. This setup ensures the semantic naming is achieved via CSS variables as requested by the token system definition. */
