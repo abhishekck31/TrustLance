@@ -1,5 +1,5 @@
 datasource db {
-  provider = postgresql
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -7,23 +7,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Subscription {
-  id          String   @id @default(cuid())
-  userId      String
-  planName    String
-  amount      Float     // Monthly recurring amount
-  startDate   DateTime
-  status      String    // e.g., ACTIVE, CANCELED
-  createdAt   DateTime  @default(now())
-}
+model TransactionStatus {
+  id          Int      @id @default(autoincrement())
+  txId        String   @unique
+  recipient  String
+  status      String // AWAITING_SIGNATURE, SENT, CONFIRMING, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updated
 
-model MRRMetric {
-  id             String    @id @default(cuid())
-  monthYear      String    @unique // Format: YYYY-MM (e.g., 2024-05)
-  totalMRR       Float
-  totalChurn     Float
-  calculatedAt   DateTime  @default(now())
+  @@index(txId)
 }
-
-// Example of how we might store aggregated metrics if needed, though the service will calculate dynamically.
-// For this implementation, we focus on using the Subscription model for calculation.

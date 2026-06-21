@@ -1,63 +1,120 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import redisClient from '../redisClient'; // Assuming this connects to Redis
+import { setupBlockchainInteraction } from './blockchainService';
+
+dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = 3001;
 
-// Middleware
+// Initialize Prisma Client
+const prisma = new PrismaClient();
+
 app.use(cors());
 app.use(express.json());
 
-// Routes
-app.get('/', (req, res) => {
-  res.send('TrustLance Bookmark Backend Running');
-});
+// --- Blockchain Service Mock (Replace with actual web3 interaction logic) ---
+const blockchainService = {
+    async submitTransaction(txId: string, recipient: string): Promise<any> {
+        console.log(`[Blockchain] Submitting transaction ${txId} to ${recipient}`);
+        // Simulate external call latency and status update based on chain activity
+        return { success: true, hash: `0xabc${txId}` };
+    },
+    async fetchTransactionStatus(txId: string): Promise<string> {
+        // In a real app, this would poll an RPC or query the contract directly
+        const status = Math.random() > 0.8 ? 'CONFIRMING' : 'SENT'; // Simulate progression
+        return status;
+    }
+};
 
-// Bookmark Routes
-app.post('/bookmarks', async (req, res) => {
-  try {
-    const { userId, title, url, isJob } = req.body;
-    if (!userId || !title || !url || isJob === undefined) {
-        return res.status(400).json({ error: "Missing required fields" });
+// --- API Endpoints ---
+
+/**
+ * Endpoint to initiate a new transaction on-chain (simulated)
+ */
+app.post('/api/transaction/start', async (req, res) => {
+    const { recipientAddress } = req.body;
+    if (!recipientAddress) {
+        return res.status(400).json({ error: "Recipient address is required" });
     }
 
-    const newBookmark = await prisma.bookmark.create({
-      data: {
-        userId: parseInt(userId),
-        title: title,
-        url: url,
-        isJob: isJob ? true : false,
-      },
-    });
+    try {
+        // 1. Create the transaction state record in PostgreSQL
+        const newStatusRecord = await prisma.transactionStatus.create({
+            data: {
+                txId: crypto.randomUUID(),
+                recipient: recipientAddress,
+                status: 'AWAITING_SIGNATURE',
+            },
+        });
 
-    res.status(201).json(newBookmark);
-  } catch (error) {
-    console.error('Error creating bookmark:', error);
-    res.status(500).json({ error: 'Failed to create bookmark' });
-  }
+        // 2. Submit transaction to blockchain (Simulated)
+        const blockchainResult = await blockchainService.submitTransaction(newStatusRecord.txId, recipientAddress);
+
+        // 3. Update DB with the result
+        await prisma.transactionStatus.update({
+            where: { id: newStatusRecord.id },
+            data: { status: 'SENT' }
+        });
+        
+        // Publish state update to Redis for real-time frontend updates (optional)
+        await redisClient.set(`tx:${newStatusRecord.txId}`, JSON.stringify({ status: 'SENT', timestamp: new Date() }));
+
+        res.status(201).json({ 
+            message: "Transaction initiated successfully.", 
+            txId: newStatusRecord.txId,
+            initialStatus: 'SENT'
+        });
+
+    } catch (error) {
+        console.error("Error starting transaction:", error);
+        res.status(500).json({ error: "Failed to start transaction process." });
+    }
 });
 
-app.get('/bookmarks/:id', async (req, res) => {
-  try {
-    const id = parseInt(req.params.id);
-    const bookmark = await prisma.bookmark.findUnique({ where: { id } });
+/**
+ * Endpoint to poll the status of a transaction
+ */
+app.get('/api/transaction/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Fetch from PostgreSQL
+        const dbStatus = await prisma.transactionStatus.findUnique({ where: { txId: id } });
 
-    if (!bookmark) {
-      return res.status(404).json({ error: 'Bookmark not found' });
+        if (!dbStatus) {
+            return res.status(404).json({ error: "Transaction not found" });
+        }
+
+        // Simulate fetching the current status from the blockchain service (polling mechanism)
+        const blockchainStatus = await blockchainService.fetchTransactionStatus(id); 
+
+        // Determine final displayed status based on both sources (prioritize chain confirmation if available)
+        let finalStatus = dbStatus.status;
+        if (blockchainStatus === 'CONFIRMING' && finalStatus !== 'SENT') {
+            finalStatus = 'CONFIRMING'; // Prioritize the active blockchain phase
+        } else if (blockchainStatus === 'COMPLETED') {
+            finalStatus = 'COMPLETED';
+        }
+
+
+        res.status(200).json({ 
+            txId: dbStatus.txId,
+            recipient: dbStatus.recipient,
+            status: finalStatus,
+            updatedAt: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error("Error fetching transaction status:", error);
+        res.status(500).json({ error: "Failed to retrieve transaction status." });
     }
-
-    // In a real app, you would check if the user associated with this bookmark is authenticated/authorized
-    res.status(200).json(bookmark);
-
-  } catch (error) {
-    console.error('Error fetching bookmark:', error);
-    res.status(500).json({ error: 'Failed to fetch bookmark' });
-  }
 });
 
 
 app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
