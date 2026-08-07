@@ -21,8 +21,30 @@ export default function LandingPage() {
       </nav>
 
       {/* Main Content Sections */}
-      <main className="pt-24 flex flex-col items-center justify-center space-y-32">
-        {/* Sections will be added here */}
+      <main className="pt-32 pb-16 px-6 lg:px-12 flex flex-col items-center justify-center space-y-32 max-w-7xl mx-auto">
+        
+        {/* Hero Section */}
+        <section className="flex flex-col items-center text-center space-y-8 animate-float">
+          <div className="inline-block px-4 py-1.5 rounded-full border border-white/20 bg-white/5 backdrop-blur-md text-sm font-medium text-gray-300 mb-4">
+            ✨ Welcome to the Future of Work
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight">
+            Decentralized Talent, <br className="hidden md:block"/> Unstoppable Teams.
+          </h1>
+          <p className="text-lg md:text-xl text-gray-400 max-w-2xl">
+            TrustLance connects top-tier freelance talent with visionary Web3 projects. Secure, transparent, and built on the blockchain.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            {/* Button placeholders */}
+            <button className="px-8 py-4 bg-indigo-500 text-white rounded-full font-semibold text-lg hover:bg-indigo-600 transition shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+              Hire Talent
+            </button>
+            <button className="px-8 py-4 bg-transparent border border-white/20 text-white rounded-full font-semibold text-lg hover:bg-white/10 transition">
+              Find Work
+            </button>
+          </div>
+        </section>
+
       </main>
 
       {/* Footer placeholder */}
