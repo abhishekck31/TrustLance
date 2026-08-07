@@ -12,11 +12,11 @@ export default function LandingPage() {
       </Head>
       
       {/* Navigation placeholder */}
-      <nav className="w-full flex justify-between items-center p-6 lg:px-12 backdrop-blur-md bg-black/50 fixed top-0 z-50 border-b border-white/10">
-        <div className="text-2xl font-bold tracking-tighter">TrustLance</div>
-        <div className="space-x-4">
-          <a href="/dashboard" className="text-sm font-medium hover:text-indigo-400 transition">Dashboard</a>
-          <button className="px-4 py-2 bg-white text-black text-sm font-semibold rounded-full hover:bg-gray-200 transition">
+      <nav className="w-full flex justify-between items-center p-4 md:p-6 lg:px-12 backdrop-blur-md bg-black/50 fixed top-0 z-50 border-b border-white/10">
+        <div className="text-xl md:text-2xl font-bold tracking-tighter">TrustLance</div>
+        <div className="flex items-center space-x-2 md:space-x-4">
+          <a href="/dashboard" className="hidden sm:block text-sm font-medium hover:text-indigo-400 transition">Dashboard</a>
+          <button className="px-3 py-1.5 md:px-4 md:py-2 bg-white text-black text-xs md:text-sm font-semibold rounded-full hover:bg-gray-200 transition">
             Connect Wallet
           </button>
         </div>
