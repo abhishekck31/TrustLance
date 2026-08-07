@@ -1,5 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
+import { GradientText } from '@/components/ui/GradientText';
 
 export default function LandingPage() {
   return (
@@ -29,7 +30,7 @@ export default function LandingPage() {
             ✨ Welcome to the Future of Work
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight max-w-4xl leading-tight">
-            Decentralized Talent, <br className="hidden md:block"/> Unstoppable Teams.
+            <GradientText>Decentralized Talent</GradientText>, <br className="hidden md:block"/> Unstoppable Teams.
           </h1>
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl">
             TrustLance connects top-tier freelance talent with visionary Web3 projects. Secure, transparent, and built on the blockchain.
