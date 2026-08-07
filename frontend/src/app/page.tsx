@@ -65,9 +65,10 @@ export default function LandingPage() {
               icon: '🌍',
             },
           ].map((feature, i) => (
-            <div key={i} className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/50 transition duration-300">
-              <div className="text-4xl mb-6">{feature.icon}</div>
-              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+            <div key={i} className="glass-card p-8 group relative z-10">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl -z-10" />
+              <div className="text-4xl mb-6 transform group-hover:scale-110 transition-transform duration-300">{feature.icon}</div>
+              <h3 className="text-xl font-bold mb-3 text-white">{feature.title}</h3>
               <p className="text-gray-400 leading-relaxed">{feature.desc}</p>
             </div>
           ))}
