@@ -74,6 +74,18 @@ export default function LandingPage() {
           ))}
         </section>
 
+        {/* Trusted By Section */}
+        <section className="w-full flex flex-col items-center pt-16 border-t border-white/5">
+          <p className="text-sm text-gray-500 uppercase tracking-widest font-semibold mb-8">Trusted by leading Web3 teams</p>
+          <div className="flex flex-wrap justify-center items-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+            {['Ethereum', 'Polygon', 'ConsenSys', 'Chainlink', 'Arbitrum'].map((company, idx) => (
+              <span key={idx} className="text-xl md:text-2xl font-bold tracking-tighter text-white">
+                {company}
+              </span>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       {/* Footer placeholder */}
