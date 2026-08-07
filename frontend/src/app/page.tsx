@@ -1,6 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import { GradientText } from '@/components/ui/GradientText';
+import { AnimatedButton } from '@/components/ui/AnimatedButton';
 
 export default function LandingPage() {
   return (
@@ -35,14 +36,13 @@ export default function LandingPage() {
           <p className="text-lg md:text-xl text-gray-400 max-w-2xl">
             TrustLance connects top-tier freelance talent with visionary Web3 projects. Secure, transparent, and built on the blockchain.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            {/* Button placeholders */}
-            <button className="px-8 py-4 bg-indigo-500 text-white rounded-full font-semibold text-lg hover:bg-indigo-600 transition shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+          <div className="flex flex-col sm:flex-row gap-6 pt-4">
+            <AnimatedButton variant="primary" className="text-lg px-8 py-4">
               Hire Talent
-            </button>
-            <button className="px-8 py-4 bg-transparent border border-white/20 text-white rounded-full font-semibold text-lg hover:bg-white/10 transition">
+            </AnimatedButton>
+            <AnimatedButton variant="outline" className="text-lg px-8 py-4 border border-white/20">
               Find Work
-            </button>
+            </AnimatedButton>
           </div>
         </section>
 
