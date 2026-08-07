@@ -46,6 +46,33 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Features Section */}
+        <section className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 pt-16">
+          {[
+            {
+              title: 'Smart Escrow',
+              desc: 'Funds are locked securely in smart contracts and released only upon milestone completion.',
+              icon: '🔒',
+            },
+            {
+              title: 'Zero Middlemen',
+              desc: 'Direct peer-to-peer engagement. Keep 100% of what you earn without platform fees.',
+              icon: '⚡',
+            },
+            {
+              title: 'Global Talent',
+              desc: 'Access a worldwide pool of verified Web3 experts, developers, and designers.',
+              icon: '🌍',
+            },
+          ].map((feature, i) => (
+            <div key={i} className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/50 transition duration-300">
+              <div className="text-4xl mb-6">{feature.icon}</div>
+              <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
+              <p className="text-gray-400 leading-relaxed">{feature.desc}</p>
+            </div>
+          ))}
+        </section>
+
       </main>
 
       {/* Footer placeholder */}
