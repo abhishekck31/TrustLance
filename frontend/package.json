@@ -1,7 +1,7 @@
 {
   "name": "trustlance-frontend",
   "version": "1.0.0",
-  "description": "TrustLance Frontend UI",
+  "description": "TrustLance Frontend UI - Modernized",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
