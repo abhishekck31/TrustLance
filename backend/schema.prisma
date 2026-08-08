@@ -13,7 +13,7 @@ model TransactionStatus {
   recipient  String
   status      String // AWAITING_SIGNATURE, SENT, CONFIRMING, COMPLETED
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updated
+  updatedAt   DateTime @updatedAt
 
   @@index(txId)
 }
