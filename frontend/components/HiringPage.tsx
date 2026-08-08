@@ -18,6 +18,7 @@ interface HiringPageProps {
 }
 
 export default function HiringPage({ opportunities }: HiringPageProps) {
+  const [opps, setOpportunities] = useState<Opportunity[]>(opportunities || [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,7 +58,7 @@ export default function HiringPage({ opportunities }: HiringPageProps) {
     )
   }
 
-  if (opportunities.length === 0) {
+  if (opps.length === 0) {
     return (
       <div className="text-center p-10 bg-white rounded-lg shadow-md border">
         <h2 className="text-2xl font-semibold text-gray-800 mb-4">No Opportunities Found</h2>
@@ -68,7 +69,7 @@ export default function HiringPage({ opportunities }: HiringPageProps) {
 
   return (
     <div className="space-y-6">
-      {opportunities.map((opp) => (
+      {opps.map((opp) => (
         <div key={opp.id} className="bg-white p-6 rounded-lg shadow-lg border border-gray-100 hover:shadow-xl transition duration-300">
           <div className="flex justify-between items-start mb-3 border-b pb-2">
             <h2 className="text-2xl font-bold text-indigo-700">{opp.title}</h2>

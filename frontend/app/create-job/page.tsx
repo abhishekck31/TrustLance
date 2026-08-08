@@ -30,14 +30,14 @@ const useCreateJob = () => {
         setLoading(false);
     };
 
-    return { formData, loading, error, handleSubmit };
+    return { formData, setFormData, loading, error, handleSubmit };
 };
 // --- End Mock Simulation ---
 
 
 export default function CreateJobPage() {
   const router = useRouter();
-  const { formData, loading, error, handleSubmit } = useCreateJob();
+  const { formData, setFormData, loading, error, handleSubmit } = useCreateJob();
 
   return (
     <div className="max-w-3xl mx-auto py-10">

@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
-import { Search, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Search, Package, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Assuming shadcn-like components
 

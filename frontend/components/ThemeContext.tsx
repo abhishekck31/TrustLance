@@ -48,7 +48,7 @@ export const useTheme = () => {
   return context;
 };
 
-export function ThemeToggleButton({ theme }: { theme: 'light' | 'dark' }) {
+export function ThemeToggleButton() {
   const { theme, toggleTheme } = useTheme();
   return (
     <button

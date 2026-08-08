@@ -1,7 +1,13 @@
 // Frontend component to display the list of featured talents.
 import React from 'react';
-import { TalentModel } from '../types'; // Assuming types are defined or imported
-import { Link } from 'next/link';
+import Link from 'next/link';
+
+export interface TalentModel {
+    id: string;
+    name: string;
+    description: string;
+    isFeatured: boolean;
+}
 
 interface FeaturedTalentCardProps {
     talent: TalentModel;

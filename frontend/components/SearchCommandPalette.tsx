@@ -1,17 +1,16 @@
 // Component responsible for the Command Palette UI and input handling.
 import React, { useState, useEffect, useRef } from 'react';
-import { SearchCommandPaletteProps } from '@/types/searchTypes'; // Assuming types are defined elsewhere
 
-interface SearchCommandPaletteProps extends SearchCommandPaletteProps {
+export interface SearchCommandPaletteProps {
   searchTerm: string;
   onSearch: (type: 'jobs' | 'escrows' | 'users' | 'disputes', term: string) => void;
   isLoading: boolean;
+  onSearchChange?: (term: string) => void;
 }
 
-export function SearchCommandPalette({ searchTerm, onSearch, isLoading }: SearchCommandPaletteProps) {
+export function SearchCommandPalette({ searchTerm, onSearch, isLoading, onSearchChange }: SearchCommandPaletteProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(null);
-  const [visibleResults, setVisibleResults] = useState([]);
+  const [visibleResults, setVisibleResults] = useState<{type: 'jobs' | 'escrows' | 'users' | 'disputes', term: string}[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // --- Simulation of Command Palette Logic ---
@@ -22,7 +21,7 @@ export function SearchCommandPalette({ searchTerm, onSearch, isLoading }: Search
     // or focus events. Here we use input to drive the UI flow.
     if (searchTerm && !isLoading) {
         // Simulate populating results based on the current term across all categories
-        const simulatedResults = [
+        const simulatedResults: {type: 'jobs' | 'escrows' | 'users' | 'disputes', term: string}[] = [
             { type: 'jobs', term: searchTerm },
             { type: 'escrows', term: searchTerm },
             { type: 'users', term: searchTerm },
@@ -46,13 +45,11 @@ export function SearchCommandPalette({ searchTerm, onSearch, isLoading }: Search
       setIsOpen(false); // Close palette after selection
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (onSearchChange) {
+      onSearchChange(e.target.value);
     }
-    // Add logic here to handle arrow key navigation if needed
   };
-
 
   return (
     <div className="relative w-full max-w-3xl mx-auto mb-10">
@@ -88,11 +85,4 @@ export function SearchCommandPalette({ searchTerm, onSearch, isLoading }: Search
       </div>
     </div>
   );
-}
-
-// Dummy Type definition for completeness, assuming this file is standalone
-export interface SearchCommandPaletteProps {
-    searchTerm: string;
-    onSearch: (type: 'jobs' | 'escrows' | 'users' | 'disputes', term: string) => void;
-    isLoading: boolean;
 }

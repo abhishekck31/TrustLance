@@ -2,7 +2,7 @@ import "./globals.css"
 import { Inter } from "next/font/google"
 // Assume this file imports necessary Wagmi/RainbowKit providers, context wrappers, etc., for full implementation
 
-const inter = Inter({ className: "font-sans" })
+const inter = Inter({ subsets: ['latin'] })
 
 export default function RootLayout({
     children,

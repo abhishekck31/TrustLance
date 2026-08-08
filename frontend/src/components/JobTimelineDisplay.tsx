@@ -32,11 +32,11 @@ const JobTimelineDisplay: React.FC<JobTimelineDisplayProps> = ({ jobId }) => {
                 
                 // Process and structure the timeline data for display
                 const processedTimeline: TimelineEntry[] = [
-                    { stage: 'Job Created', date: data.created, status: 'Created' },
-                    ...(data.funded ? [{ stage: 'Job Funded', date: data.funded, status: 'Funded' }] : []),
-                    ...(data.milestone ? [{ stage: 'Milestone Set', date: data.milestone, status: 'Milestone' }] : []),
-                    ...(data.approved ? [{ stage: 'Approved', date: data.approved, status: 'Approved' }] : []),
-                    ...(data.released ? [{ stage: 'Released', date: data.released, status: 'Released' }] : []),
+                    { stage: 'Job Created', date: data.created, status: 'Created' as const },
+                    ...(data.funded ? [{ stage: 'Job Funded', date: data.funded, status: 'Funded' as const }] : []),
+                    ...(data.milestone ? [{ stage: 'Milestone Set', date: data.milestone, status: 'Milestone' as const }] : []),
+                    ...(data.approved ? [{ stage: 'Approved', date: data.approved, status: 'Approved' as const }] : []),
+                    ...(data.released ? [{ stage: 'Released', date: data.released, status: 'Released' as const }] : []),
                 ];
 
                 setTimeline(processedTimeline);
