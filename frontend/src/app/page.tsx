@@ -2,6 +2,8 @@ import React from 'react';
 import Head from 'next/head';
 import { GradientText } from '@/components/ui/GradientText';
 import { AnimatedButton } from '@/components/ui/AnimatedButton';
+import { ConnectWalletButton } from '@/components/ui/ConnectWalletButton';
+import { StatsOverview } from '@/components/ui/StatsOverview';
 
 export default function LandingPage() {
   return (
@@ -16,9 +18,7 @@ export default function LandingPage() {
         <div className="text-xl md:text-2xl font-bold tracking-tighter">TrustLance</div>
         <div className="flex items-center space-x-2 md:space-x-4">
           <a href="/dashboard" className="hidden sm:block text-sm font-medium hover:text-indigo-400 transition">Dashboard</a>
-          <button className="px-3 py-1.5 md:px-4 md:py-2 bg-white text-black text-xs md:text-sm font-semibold rounded-full hover:bg-gray-200 transition">
-            Connect Wallet
-          </button>
+          <ConnectWalletButton />
         </div>
       </nav>
 
@@ -72,6 +72,11 @@ export default function LandingPage() {
               <p className="text-gray-400 leading-relaxed">{feature.desc}</p>
             </div>
           ))}
+        </section>
+
+        {/* Stats Section */}
+        <section className="w-full pt-16">
+          <StatsOverview />
         </section>
 
         {/* Trusted By Section */}
