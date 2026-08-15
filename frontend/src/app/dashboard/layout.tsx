@@ -9,7 +9,8 @@ import {
   Scale, 
   Settings, 
   LogOut,
-  Bell
+  Bell,
+  MessageSquare
 } from "lucide-react";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 
@@ -24,6 +25,7 @@ export default function DashboardLayout({
     { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
     { href: "/dashboard/jobs", icon: Briefcase, label: "Jobs" },
     { href: "/dashboard/escrows", icon: Wallet, label: "Escrows" },
+    { href: "/dashboard/messages", icon: MessageSquare, label: "Messages" },
     { href: "/dashboard/dao", icon: Scale, label: "Governance" },
     { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   ];
