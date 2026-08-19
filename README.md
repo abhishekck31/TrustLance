@@ -1,4 +1,4 @@
-# TrustLance 
+# TrustLance  
 
 TrustLance is a production-grade decentralized freelance escrow platform. Payments are locked on-chain, released via milestones, and disputes are handled transparently by a DAO.
 
