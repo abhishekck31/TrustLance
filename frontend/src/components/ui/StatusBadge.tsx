@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-export type EscrowStatus = "Open" | "Funded" | "InProgress" | "Disputed" | "Completed";
+export type EscrowStatus = "Pending" | "Open" | "Funded" | "InProgress" | "Disputed" | "Completed";
 
 interface StatusBadgeProps {
   status: EscrowStatus;
@@ -9,6 +9,7 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, className = "" }: StatusBadgeProps) {
   const styles: Record<EscrowStatus, string> = {
+    Pending: "bg-gray-500/10 text-gray-400 border-gray-500/20",
     Open: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     Funded: "bg-purple-500/10 text-purple-400 border-purple-500/20",
     InProgress: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",

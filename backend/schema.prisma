@@ -7,13 +7,60 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model User {
+  id            Int            @id @default(autoincrement())
+  walletAddress String         @unique
+  reputation    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  clientEscrows Escrow[]       @relation("ClientEscrows")
+  freelancerEscrows Escrow[]   @relation("FreelancerEscrows")
+  messagesSent  Message[]      @relation("SentMessages")
+}
+
+model Escrow {
+  id            Int        @id @default(autoincrement())
+  title         String
+  description   String
+  amount        Float
+  status        String     @default("Pending") // Pending, Open, Funded, InProgress, Disputed, Completed
+  clientId      Int
+  freelancerId  Int?
+  client        User       @relation("ClientEscrows", fields: [clientId], references: [id])
+  freelancer    User?      @relation("FreelancerEscrows", fields: [freelancerId], references: [id])
+  messages      Message[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Message {
+  id            Int      @id @default(autoincrement())
+  content       String
+  senderId      Int
+  sender        User     @relation("SentMessages", fields: [senderId], references: [id])
+  escrowId      Int
+  escrow        Escrow   @relation(fields: [escrowId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Proposal {
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  status        String   @default("Active") // Active, Passed, Failed
+  votesFor      Int      @default(0)
+  votesAgainst  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model TransactionStatus {
   id          Int      @id @default(autoincrement())
   txId        String   @unique
-  recipient  String
+  recipient   String
   status      String // AWAITING_SIGNATURE, SENT, CONFIRMING, COMPLETED
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index(txId)
+  @@index([txId])
 }
